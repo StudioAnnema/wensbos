@@ -123,8 +123,6 @@
   .who-pick button[aria-pressed="true"]{background:var(--gold);color:var(--ink)}
   .err{color:#ff8a7a;font-size:9px;line-height:1.8;min-height:1em;margin-top:10px}
   .acts{grid-column:2/4;display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:6px}
-  .btn.res{background:var(--leaf);box-shadow:0 0 0 3px var(--ink),inset -3px -3px 0 var(--leaf-d)}
-  .btn.res.mine{background:#9fd3ff;box-shadow:0 0 0 3px var(--ink),inset -3px -3px 0 #5a9ad0}
   .btn.del{font-size:9px;padding:8px 10px}
   .addform{margin-bottom:0}
   @media (max-width:560px){
@@ -931,7 +929,7 @@
         const rows = await rpc('lijsten', { p_kijker: me?.id || null });
         rows.forEach(r => (wishes[r.eigenaar] ||= []).push({
           id: r.id, titel: r.titel, prijs: r.prijs || '', link: safeLink(r.link), notitie: r.notitie || '',
-          fav: r.fav, doorMij: r.door_mij,
+          fav: r.fav,
         }));
       } catch (e) { console.warn('Database niet bereikbaar:', e.message); }
     } else {
@@ -979,14 +977,10 @@
   /* ================= Level-scherm (verlanglijstje) ================= */
   const level = document.getElementById('level');
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
-  function itemActions(w, own, canReserve) {
+  function itemActions(w, own) {
     const parts = [];
     if (w.link) parts.push(`<a class="btn go" href="${esc(w.link)}" target="_blank" rel="noopener noreferrer">BEKIJK ▶</a>`);
     if (own) parts.push(`<button class="btn ghost del" data-del="${esc(w.id)}">✕ WEGHALEN</button>`);
-    if (canReserve) {
-      if (w.doorMij) parts.push(`<button class="btn res mine" data-res="${esc(w.id)}" data-on="0">✓ JIJ KOOPT DIT</button>`);
-      else parts.push(`<button class="btn res" data-res="${esc(w.id)}" data-on="1">IK KOOP DIT</button>`);
-    }
     return parts.length ? `<div class="acts">${parts.join('')}</div>` : '';
   }
   function footer(p, own) {
@@ -1010,12 +1004,11 @@
           <p class="err" id="addErr"></p>
           <div class="row"><button class="btn" type="submit">+ OP M'N LIJSTJE</button></div>
         </form>`;
-    if (!me) return `<div class="howto"><strong>IETS KOPEN?</strong>Tik rechtsboven op WIE BEN JIJ? en kies je naam. Dan kun je afvinken wat jij koopt. Dat ziet verder niemand.</div>`;
     return '';
   }
   function renderLevel(i) {
     const p = PEOPLE[i], list = wishes[p.id] || [];
-    const own = !!(DB && me && me.id === p.id), canReserve = !!(DB && me && me.id !== p.id);
+    const own = !!(DB && me && me.id === p.id);
     level.innerHTML = `
       <div class="wrap">
         <div class="topbar">
@@ -1037,7 +1030,7 @@
               <h3>${esc(w.titel)}</h3>
               <span class="price">${esc(w.prijs)}</span>
               ${w.notitie ? `<p class="note">${esc(w.notitie)}</p>` : ''}
-              ${itemActions(w, own, canReserve)}
+              ${itemActions(w, own)}
             </article>`).join('') : `<div class="empty">HIER GROEIT NOG NIETS...<br>KOM LATER TERUG!</div>`}
         </div>
         ${footer(p, own)}
@@ -1047,12 +1040,6 @@
     level.querySelector('#back').addEventListener('click', closeLevel);
     level.querySelector('#lvlWho')?.addEventListener('click', openLogin);
 
-    level.querySelectorAll('[data-res]').forEach(b => b.addEventListener('click', async () => {
-      b.disabled = true;
-      try { await rpc('reserveren', { p_lid: me.id, p_id: b.dataset.res, p_aan: b.dataset.on === '1' }); sfx.coin(); }
-      catch (e) { alert('Dat lukte niet: ' + e.message); }
-      await loadAll(); renderLevel(i);
-    }));
     level.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => {
       if (!confirm('Dit cadeau van je lijstje halen?')) return;
       try { await rpc('cadeau_verwijderen', { p_lid: me.id, p_id: b.dataset.del }); sfx.back(); }

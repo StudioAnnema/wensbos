@@ -9,8 +9,6 @@ Live: https://studioannema.github.io/wensbos/
 
 1. Open de site en tik rechtsboven op **WIE BEN JIJ?**. Kies je naam.
 2. Klik op jezelf in het bos en vul onderaan **CADEAU TOEVOEGEN** in.
-3. Bij de lijstjes van de anderen kun je **IK KOOP DIT** aanklikken. Dat vinkje zie alleen jij:
-   niemand anders ziet wie wat koopt (handig met lootjes).
 
 ### Zonder database (via GitHub)
 
@@ -31,8 +29,7 @@ Live: https://studioannema.github.io/wensbos/
 3. Ga naar **Project Settings → API** en kopieer de **Project URL** en de **anon public key**.
 4. Zet die twee in [`config.js`](config.js) en sla op. Klaar: de site gebruikt vanaf nu de database.
 
-De anon key mag openbaar staan. De tabellen zelf zijn dicht. Alles loopt via de functies uit `supabase.sql`,
-en die laten nooit zien wie wat afvinkt.
+De publishable/anon key mag openbaar staan. De tabellen zelf zijn dicht: alles loopt via de functies uit `supabase.sql`.
 
 ## Delen
 
