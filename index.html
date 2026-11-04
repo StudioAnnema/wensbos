@@ -126,8 +126,6 @@
   .btn.res{background:var(--leaf);box-shadow:0 0 0 3px var(--ink),inset -3px -3px 0 var(--leaf-d)}
   .btn.res.mine{background:#9fd3ff;box-shadow:0 0 0 3px var(--ink),inset -3px -3px 0 #5a9ad0}
   .btn.del{font-size:9px;padding:8px 10px}
-  .claimed{font-size:9px;color:#fff;background:#7a6f8f;padding:7px 8px;box-shadow:0 0 0 3px var(--ink)}
-  .wish.taken{opacity:.75}
   .addform{margin-bottom:0}
   @media (max-width:560px){
     .head{flex-direction:column;text-align:center;gap:14px}
@@ -166,7 +164,6 @@
   <div class="panel">
     <h2 id="loginTitle">WIE BEN JIJ?</h2>
     <div class="who-pick" id="whoPick"></div>
-    <p class="err">DEZE BROWSER ONTHOUDT JE KEUZE.</p>
     <div class="row"><button class="btn ghost" type="button" id="loginCancel">ANNULEER</button><button class="btn ghost hidden" type="button" id="logout">IK BEN NIEMAND HIERVAN</button></div>
   </div>
 </div>
@@ -933,7 +930,7 @@
         const rows = await rpc('lijsten', { p_kijker: me?.id || null });
         rows.forEach(r => (wishes[r.eigenaar] ||= []).push({
           id: r.id, titel: r.titel, prijs: r.prijs || '', link: safeLink(r.link), notitie: r.notitie || '',
-          fav: r.fav, gereserveerd: r.gereserveerd, doorMij: r.door_mij,
+          fav: r.fav, doorMij: r.door_mij,
         }));
       } catch (e) { console.warn('Database niet bereikbaar:', e.message); }
     } else {
@@ -986,8 +983,7 @@
     if (w.link) parts.push(`<a class="btn go" href="${esc(w.link)}" target="_blank" rel="noopener noreferrer">BEKIJK ▶</a>`);
     if (own) parts.push(`<button class="btn ghost del" data-del="${esc(w.id)}">✕ WEGHALEN</button>`);
     if (canReserve) {
-      if (w.doorMij) parts.push(`<button class="btn res mine" data-res="${esc(w.id)}" data-on="0">✓ JIJ REGELT DIT</button>`);
-      else if (w.gereserveerd) parts.push(`<span class="claimed">AL GEREGELD</span>`);
+      if (w.doorMij) parts.push(`<button class="btn res mine" data-res="${esc(w.id)}" data-on="0">✓ JIJ KOOPT DIT</button>`);
       else parts.push(`<button class="btn res" data-res="${esc(w.id)}" data-on="1">IK KOOP DIT</button>`);
     }
     return parts.length ? `<div class="acts">${parts.join('')}</div>` : '';
@@ -1013,7 +1009,7 @@
           <p class="err" id="addErr"></p>
           <div class="row"><button class="btn" type="submit">+ OP M'N LIJSTJE</button></div>
         </form>`;
-    if (!me) return `<div class="howto"><strong>IETS KOPEN?</strong>Tik rechtsboven op WIE BEN JIJ? en kies je naam. Dan zie je wat al geregeld is en kun je zelf iets afvinken.</div>`;
+    if (!me) return `<div class="howto"><strong>IETS KOPEN?</strong>Tik rechtsboven op WIE BEN JIJ? en kies je naam. Dan kun je afvinken wat jij koopt. Dat ziet verder niemand.</div>`;
     return '';
   }
   function renderLevel(i) {
@@ -1035,7 +1031,7 @@
         </div>
         <div class="list">
           ${list.length ? list.map((w, k) => `
-            <article class="wish${w.fav ? ' fav' : ''}${canReserve && w.gereserveerd && !w.doorMij ? ' taken' : ''}" style="animation-delay:${k * 70}ms">
+            <article class="wish${w.fav ? ' fav' : ''}" style="animation-delay:${k * 70}ms">
               <span class="ico" aria-hidden="true">${w.fav ? '♥' : '★'}</span>
               <h3>${esc(w.titel)}</h3>
               <span class="price">${esc(w.prijs)}</span>

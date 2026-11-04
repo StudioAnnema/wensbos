@@ -1,6 +1,7 @@
 -- Het Wensbos · database voor de verlanglijstjes
 -- Plak dit in Supabase → SQL Editor → New query, en klik Run. Meer hoef je niet te doen.
--- Er is geen pincode: op de site kiest iedereen één keer wie hij of zij is, en de browser onthoudt dat.
+-- Er is geen pincode: op de site kiest iedereen één keer wie hij of zij is.
+-- Afvinken is geheim (lootjes!): je ziet alleen je eigen vinkjes, nooit die van een ander.
 
 -- 1. Tabellen -------------------------------------------------------------
 create table if not exists public.leden (
@@ -16,25 +17,32 @@ create table if not exists public.cadeaus (
   link              text not null default '' check (link = '' or link ~* '^https?://'),
   notitie           text not null default '' check (char_length(notitie) <= 200),
   fav               boolean not null default false,
-  gereserveerd_door text references public.leden(id) on delete set null,
   gemaakt_op        timestamptz not null default now()
 );
 
+-- Wie wat koopt. Alleen via de functies hieronder, en elk lid ziet alleen zijn eigen rijen.
+create table if not exists public.afgevinkt (
+  cadeau uuid not null references public.cadeaus(id) on delete cascade,
+  lid    text not null references public.leden(id) on delete cascade,
+  primary key (cadeau, lid)
+);
+
 -- Tabellen dicht: niemand leest of schrijft er direct in, alleen via de functies hieronder.
--- Zo kan de site nooit laten zien wie wat koopt aan degene voor wie het cadeau is.
+-- Zo kan de site nooit laten zien wie wat koopt.
 alter table public.leden   enable row level security;
 alter table public.cadeaus enable row level security;
-revoke all on public.leden, public.cadeaus from anon, authenticated;
+alter table public.afgevinkt enable row level security;
+revoke all on public.leden, public.cadeaus, public.afgevinkt from anon, authenticated;
 
 -- 2. Functies -------------------------------------------------------------
--- Alle lijstjes. Wat al geregeld is, zie je alleen als je gekozen hebt wie je bent en het niet je eigen lijstje is.
+-- Alle lijstjes, plus alleen JOUW eigen vinkjes (door_mij). Wat anderen afvinken komt hier nooit uit.
+drop function if exists public.lijsten(text);
 create or replace function public.lijsten(p_kijker text default null)
 returns table (id uuid, eigenaar text, titel text, prijs text, link text, notitie text,
-               fav boolean, gereserveerd boolean, door_mij boolean)
+               fav boolean, door_mij boolean)
 language sql stable security definer set search_path = public as $$
   select c.id, c.eigenaar, c.titel, c.prijs, c.link, c.notitie, c.fav,
-         (p_kijker is not null and p_kijker <> c.eigenaar and c.gereserveerd_door is not null),
-         (p_kijker is not null and p_kijker <> c.eigenaar and coalesce(c.gereserveerd_door = p_kijker, false))
+         exists (select 1 from afgevinkt a where a.cadeau = c.id and a.lid = p_kijker and p_kijker <> c.eigenaar)
   from cadeaus c
   order by c.fav desc, c.gemaakt_op;
 $$;
@@ -56,17 +64,18 @@ returns void language sql security definer set search_path = public as $$
   delete from cadeaus where id = p_id and eigenaar = p_lid;
 $$;
 
--- Afvinken (p_aan = true) of je afvinking terugdraaien (p_aan = false). Nooit op je eigen lijstje.
+-- Afvinken (p_aan = true) of je vinkje weghalen (p_aan = false). Nooit op je eigen lijstje.
+-- Geeft niets terug over anderen, dus ook niet of iemand anders hetzelfde al afvinkte.
 create or replace function public.reserveren(p_lid text, p_id uuid, p_aan boolean)
 returns void language plpgsql security definer set search_path = public as $$
 begin
   if not exists (select 1 from leden where id = p_lid) then raise exception 'Onbekend familielid'; end if;
   if p_aan then
-    update cadeaus set gereserveerd_door = p_lid
-     where id = p_id and eigenaar <> p_lid and gereserveerd_door is null;
-    if not found then raise exception 'Iemand anders regelt dit al'; end if;
+    insert into afgevinkt (cadeau, lid)
+    select c.id, p_lid from cadeaus c where c.id = p_id and c.eigenaar <> p_lid
+    on conflict do nothing;
   else
-    update cadeaus set gereserveerd_door = null where id = p_id and gereserveerd_door = p_lid;
+    delete from afgevinkt where cadeau = p_id and lid = p_lid;
   end if;
 end $$;
 
