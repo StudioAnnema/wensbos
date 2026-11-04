@@ -145,9 +145,9 @@
 (() => {
   /* ================= Spelers ================= */
   const PEOPLE = [
-    { id:'benno',  naam:'BENNO',  style:'shag',   short:true,
-      skin:'#e3ab82', skinD:'#c48a62', hair:'#b8935c', hairH:'#dcbb84', hairD:'#8a6a3e',
-      shirt:'#26272d', shirtD:'#17181c', pants:'#5f5848', shoes:'#5a3a22' },
+    { id:'benno',  naam:'BENNO',  style:'shag',   chore:true, grin:true,
+      skin:'#efc0a0', skinD:'#d29c78', hair:'#c98a52', hairH:'#e6b07a', hairD:'#9a6236',
+      shirt:'#c9a46c', shirtD:'#a6834f', pants:'#6b4a32', shoes:'vans' },
     { id:'tijme',  naam:'TIJME',  style:'swept',  short:true,
       skin:'#f1c6a3', skinD:'#d6a27c', hair:'#6b4a2b', hairH:'#9c7650', hairD:'#4a321c',
       shirt:'#2f7487', shirtD:'#245b6b', pants:'#4a5f86', shoes:'#f0f0f0' },
@@ -170,6 +170,10 @@
       g.fillRect(x + (dir > 0 ? lx : SW - lx - w), y + ly, w, h);
     };
     const legs = [[5,9],[4,10],[6,8]][frame] || [5,9];
+    const shoe = lx => {
+      if (p.shoes !== 'vans') return r(lx,26,3,2,p.shoes);
+      for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) r(lx+i,26+j,1,1,(i + j) % 2 ? '#c8322b' : '#f4f1ea');
+    };
     const sw = frame === 1 ? 1 : frame === 2 ? -1 : 0;
 
     // lang haar achter het lichaam
@@ -177,20 +181,28 @@
 
     if (p.coat) {
       // lange donsjas met gekruiste armen
-      r(legs[0],26,3,2,p.shoes); r(legs[1],26,3,2,p.shoes);
+      shoe(legs[0]); shoe(legs[1]);
       r(4,15,8,2,p.shirt); r(3,17,10,9,p.shirt);
       r(3,20,10,1,p.shirtD); r(3,23,10,1,p.shirtD); r(3,25,10,1,p.shirtD);
       r(2,17,12,3,p.shirtH); r(2,19,12,1,p.shirtD); r(7,17,2,2,p.shirtD);
       r(5,14,6,2,p.shirt); r(6,14,4,1,p.shirtH);
     } else {
       r(legs[0],22,2,4,p.pants); r(legs[1],22,2,4,p.pants);
-      r(legs[0],26,3,2,p.shoes); r(legs[1],26,3,2,p.shoes);
+      shoe(legs[0]); shoe(legs[1]);
       r(4,15,8,7,p.shirt); r(4,21,8,1,p.shirtD);
+      if (p.chore) {
+        // beige werkjas: tot over de heupen, corduroy kraag, knopen en zakken
+        r(4,15,8,9,p.shirt); r(4,23,8,1,p.shirtD);
+        r(8,16,1,7,p.shirtD); r(8,17,1,1,'#5a3e24'); r(8,20,1,1,'#5a3e24');
+        r(9,17,2,1,p.shirtD); r(5,20,2,1,p.shirtD); r(10,20,2,1,p.shirtD);
+        r(5,14,6,1,'#7a5532'); r(6,15,1,2,'#7a5532'); r(10,15,1,2,'#7a5532'); r(7,15,3,1,'#3b3630');
+      }
       const b = Math.max(0,-sw), f = Math.max(0,sw);
       r(2,15+b,2,5,p.shirtD); r(12,15+f,2,5,p.shirt);
       if (p.short) { r(2,17+b,2,3,p.skinD); r(12,17+f,2,3,p.skin); }
+      if (p.chore) { r(2,19+b,2,1,'#8f6f40'); r(12,19+f,2,1,p.shirtD); }
       r(2,20+b,2,1,p.skinD); r(12,20+f,2,1,p.skin);
-      r(7,14,3,1,p.skinD);
+      if (!p.chore) r(7,14,3,1,p.skinD);
     }
 
     // hoofd
@@ -198,13 +210,10 @@
     r(4,9,1,2,p.skinD);
 
     if (p.style === 'shag') {            // Benno: halflang, warrig blond
-      r(3,2,3,10,p.hair); r(4,1,8,3,p.hair); r(5,0,6,1,p.hair);
-      r(3,0,1,2,p.hair); r(11,1,2,2,p.hair);
-      r(5,4,3,1,p.hair); r(9,4,3,2,p.hair); r(11,6,1,2,p.hair);
-      r(3,9,3,3,p.hairD); r(4,4,1,1,p.hairD);
-      r(6,1,4,1,p.hairH); r(4,2,1,4,p.hairH);
-      r(6,12,5,1,'#c9a37a'); r(6,13,4,1,'#c9a37a');
-      r(8,15,1,3,'#3a3b42'); r(7,15,3,1,'#3a3b42');
+      r(3,2,3,10,p.hair); r(4,1,8,3,p.hair); r(5,0,6,1,p.hair); r(11,1,1,2,p.hair);
+      r(4,4,2,7,p.hair); r(5,4,6,1,p.hair); r(8,5,3,1,p.hair); r(11,4,1,3,p.hair);
+      r(3,9,2,3,p.hairD); r(6,5,2,1,p.hairD); r(5,10,1,1,p.hairD);
+      r(6,1,4,1,p.hairH); r(5,2,2,1,p.hairH); r(9,4,2,1,p.hairH); r(4,3,1,4,p.hairH);
     } else if (p.style === 'swept') {    // Tijme: bruin, naar achteren geveegd
       r(3,2,2,7,p.hair); r(4,1,8,3,p.hair); r(5,0,6,1,p.hair);
       r(10,1,2,3,p.hair); r(12,2,1,2,p.hair);
@@ -230,7 +239,8 @@
       r(7,8,1,2,INK); r(10,8,1,2,INK);
       if (p.style !== 'fringe') { r(7,7,1,1,p.hairD); r(10,7,1,1,p.hairD); }
       r(11,10,1,1,p.skinD);
-      r(7,11,1,1,'#8a3434'); r(8,12,2,1,'#8a3434'); r(10,11,1,1,'#8a3434');
+      if (p.grin) { r(7,11,1,1,'#8a3434'); r(8,11,3,1,'#ffffff'); r(8,12,3,1,'#8a3434'); }
+      else { r(7,11,1,1,'#8a3434'); r(8,12,2,1,'#8a3434'); r(10,11,1,1,'#8a3434'); }
       r(5,11,1,1,'rgba(230,110,110,.45)');
     }
   }
