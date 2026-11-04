@@ -147,7 +147,7 @@
   const PEOPLE = [
     { id:'benno',  naam:'BENNO',  style:'shag',   chore:true, grin:true, head:'benno',
       skin:'#efc0a0', skinD:'#d29c78', hair:'#c98a52', hairH:'#e6b07a', hairD:'#9a6236',
-      shirt:'#c9a46c', shirtD:'#a6834f', pants:'#6b4a32', shoes:'vans' },
+      shirt:'#d8c4a6', shirtD:'#b9a382', rib:'#c9b493', pants:'#6b4a32', shoes:'vans' },
     { id:'tijme',  naam:'TIJME',  style:'swept',  short:true,
       skin:'#f1c6a3', skinD:'#d6a27c', hair:'#6b4a2b', hairH:'#9c7650', hairD:'#4a321c',
       shirt:'#2f7487', shirtD:'#245b6b', pants:'#4a5f86', shoes:'#f0f0f0' },
@@ -212,16 +212,18 @@
       shoe(legs[0]); shoe(legs[1]);
       r(4,15,8,7,p.shirt); r(4,21,8,1,p.shirtD);
       if (p.chore) {
-        // beige werkjas: tot over de heupen, corduroy kraag, knopen en zakken
-        r(4,15,8,9,p.shirt); r(4,23,8,1,p.shirtD);
-        r(8,16,1,7,p.shirtD); r(8,17,1,1,'#5a3e24'); r(8,20,1,1,'#5a3e24');
+        // corduroy overjas: verticale ribbels, tot over de heupen, kraag, knopen en zakken
+        r(4,15,8,9,p.shirt);
+        for (let i = 5; i < 12; i += 2) r(i,15,1,8,p.rib);
+        r(4,23,8,1,p.shirtD);
+        r(8,16,1,7,p.shirtD); r(8,17,1,1,'#8c7656'); r(8,20,1,1,'#8c7656');
         r(9,17,2,1,p.shirtD); r(5,20,2,1,p.shirtD); r(10,20,2,1,p.shirtD);
-        r(5,14,6,1,'#7a5532'); r(6,15,1,2,'#7a5532'); r(10,15,1,2,'#7a5532'); r(7,15,3,1,'#3b3630');
+        r(5,14,6,1,p.shirtD); r(6,15,1,2,p.shirtD); r(10,15,1,2,p.shirtD); r(7,15,3,1,'#3b3630');
       }
       const b = Math.max(0,-sw), f = Math.max(0,sw);
       r(2,15+b,2,5,p.shirtD); r(12,15+f,2,5,p.shirt);
       if (p.short) { r(2,17+b,2,3,p.skinD); r(12,17+f,2,3,p.skin); }
-      if (p.chore) { r(2,19+b,2,1,'#8f6f40'); r(12,19+f,2,1,p.shirtD); }
+      if (p.chore) { r(2,15+b,1,4,'#a8926f'); r(13,15+f,1,4,p.rib); r(2,19+b,2,1,'#a8926f'); r(12,19+f,2,1,p.shirtD); }
       r(2,20+b,2,1,p.skinD); r(12,20+f,2,1,p.skin);
       if (!p.chore) r(7,14,3,1,p.skinD);
     }
@@ -229,7 +231,7 @@
     if (p.head) {
       const pal = { H:p.hair, h:p.hairH, d:p.hairD, S:p.skin, s:p.skinD, E:INK, M:'#8a3434', W:'#ffffff' };
       HEADS[p.head].forEach((row, ly) => [...row].forEach((ch, lx) => { if (ch !== '.') r(lx, ly, 1, 1, pal[ch]); }));
-      if (p.chore) { r(5,14,2,1,'#7a5532'); r(10,14,2,1,'#7a5532'); }
+      if (p.chore) { r(5,14,2,1,p.shirtD); r(10,14,2,1,p.shirtD); }
       return;
     }
 
