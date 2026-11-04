@@ -148,9 +148,9 @@
     { id:'benno',  naam:'BENNO',  style:'shag',   chore:true, grin:true, head:'benno',
       skin:'#efc0a0', skinD:'#d29c78', hair:'#c98a52', hairH:'#e6b07a', hairD:'#9a6236',
       shirt:'#ddc9ab', shirtD:'#b39d7b', rib:'#a8916e', ribH:'#ecdcc2', pants:'#6b4a32', shoes:'vans' },
-    { id:'tijme',  naam:'TIJME',  style:'swept',  short:true,
-      skin:'#f1c6a3', skinD:'#d6a27c', hair:'#6b4a2b', hairH:'#9c7650', hairD:'#4a321c',
-      shirt:'#2f7487', shirtD:'#245b6b', pants:'#4a5f86', shoes:'#f0f0f0' },
+    { id:'tijme',  naam:'TIJME',  style:'swept',  head:'tijme', track:true,
+      skin:'#f1c6a3', skinD:'#d6a27c', hair:'#6b4a2b', hairH:'#a8845a', hairD:'#4a321c',
+      shirt:'#1e1f25', shirtD:'#121317', pants:'#4a5f86', shoes:'#f0f0f0' },
     { id:'aletha', naam:'ALETHA', style:'long',   coat:true,
       skin:'#f3caae', skinD:'#d9a585', hair:'#d2ae74', hairH:'#eed39e', hairD:'#a8854f',
       shirt:'#27355c', shirtD:'#1b2644', shirtH:'#33467a', pants:'#1c1c24', shoes:'#1c1c24' },
@@ -180,6 +180,23 @@
       '...HHdSSSMMMs...',
       '...dd.SSSSSs....',
       '......ssss......',
+    ],
+    tijme: [
+      '.....hHHHh......',
+      '....HHHhhHHH....',
+      '...HHhHHdHHhHH..',
+      '...HHHHdSdHHHHH.',
+      '...HHHdSSSdHHHH.',
+      '...HHdSSSSSdHH..',
+      '...HHSSSSSSSdH..',
+      '...HdSSddSddS...',
+      '...HsSSSESSES...',
+      '...dsSSSSSSSSs..',
+      '....SSSSSSSSs...',
+      '....SSsMWWWWM...',
+      '....sSSSMMMMs...',
+      '.....sSSSSSs....',
+      '.......sss......',
     ],
   };
 
@@ -223,7 +240,13 @@
       if (p.chore) { r(2,15+b,1,5,p.rib); r(12,15+f,1,5,p.ribH); r(13,15+f,1,5,p.rib); }
       r(2,20+b,2,1,p.skinD); r(12,20+f,2,1,p.skin);
       if (!p.chore) r(7,14,3,1,p.skinD);
+      if (p.track) {
+        r(5,14,6,1,p.shirt); r(8,15,1,7,'#45464e');
+        r(5,15,1,7,'#eeeeee'); r(10,15,1,7,'#eeeeee'); r(13,15+f,1,5,'#eeeeee');
+      }
     }
+
+    if (p.band) { r(4,18,8,1,'#dfe6e8'); r(4,19,8,3,'#2b2f3a'); }
 
     if (p.head) {
       const pal = { H:p.hair, h:p.hairH, d:p.hairD, S:p.skin, s:p.skinD, E:INK, M:'#8a3434', W:'#ffffff' };
@@ -247,7 +270,6 @@
       r(4,4,1,4,p.hair); r(5,4,3,1,p.hair);
       r(6,0,4,1,p.hairH); r(5,1,3,1,p.hairH); r(10,2,1,1,p.hairH);
       r(3,6,1,3,p.hairD);
-      r(4,18,8,1,'#dfe6e8'); r(4,19,8,3,'#2b2f3a');
     } else if (p.style === 'fringe') {   // Sieb: rood, volle pony
       r(3,2,2,7,p.hair); r(4,1,8,3,p.hair); r(4,0,7,1,p.hair); r(3,1,1,4,p.hair);
       r(5,4,7,2,p.hair); r(9,6,3,1,p.hair); r(11,4,2,3,p.hair); r(4,4,1,4,p.hair);
