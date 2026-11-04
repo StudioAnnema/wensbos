@@ -148,10 +148,10 @@
     { id:'benno',  naam:'BENNO',  style:'shag',   chore:true, grin:true, head:'benno',
       skin:'#efc0a0', skinD:'#d29c78', hair:'#c98a52', hairH:'#e6b07a', hairD:'#9a6236',
       shirt:'#ddc9ab', shirtD:'#b39d7b', rib:'#a8916e', ribH:'#ecdcc2', pants:'#6b4a32', shoes:'vans' },
-    { id:'tijme',  naam:'TIJME',  style:'swept',  head:'tijme', short:true,
+    { id:'tijme',  naam:'TIJME',  style:'swept', stache:true, head:'tijmeSwept', track:true,
       skin:'#f1c6a3', skinD:'#d6a27c', hair:'#6b4a2b', hairH:'#a8845a', hairD:'#4a321c',
-      shirt:'#f4f2ec', shirtD:'#d8d3c8', pants:'#7a5a3c', shoes:'#f0f0f0' },
-    { id:'aletha', naam:'ALETHA', style:'long',   coat:true,
+      shirt:'#1e1f25', shirtD:'#121317', pants:'#e4d9bf', shoes:'#f0f0f0' },
+    { id:'aletha', naam:'ALETHA', style:'long',   coat:true, head:'aletha',
       skin:'#f3caae', skinD:'#d9a585', hair:'#d2ae74', hairH:'#eed39e', hairD:'#a8854f',
       shirt:'#27355c', shirtD:'#1b2644', shirtH:'#33467a', pants:'#1c1c24', shoes:'#1c1c24' },
     { id:'sieb',   naam:'SIEB',   style:'fringe', short:true,
@@ -180,6 +180,57 @@
       '...HHdSSSMMMs...',
       '...dd.SSSSSs....',
       '......ssss......',
+    ],
+    tijmeSwept: [
+      '......hHHh......',
+      '....HHhhHHHH....',
+      '...HHHHHHhHHHH..',
+      '...HHHHdHHHHHHH.',
+      '...HHHdSSSdHHH..',
+      '...HHdSSSSSSSd..',
+      '...HHSSSSSSSS...',
+      '...HdSSddSddS...',
+      '...HsSSSESSES...',
+      '...dsSSSSSSSSs..',
+      '....SSSSSSSSs...',
+      '....SSsMWWWWM...',
+      '....sSSSMMMMs...',
+      '.....sSSSSSs....',
+      '.......sss......',
+    ],
+    tijmeMid: [
+      '.....hHHHh......',
+      '....HHHhHHHH....',
+      '...HHhHHdHHhHH..',
+      '...HHHHHdHHHHHH.',
+      '...HHHHdSdHHHHH.',
+      '...HHHdSSSdHHHH.',
+      '...HHSSSSSSSHH..',
+      '...HdSSddSddSH..',
+      '...HsSSSESSESH..',
+      '...dsSSSSSSSSs..',
+      '....SSSSSSSSs...',
+      '....SSsMWWWWM...',
+      '....sSSSMMMMs...',
+      '.....sSSSSSs....',
+      '.......sss......',
+    ],
+    aletha: [
+      '.....hHHHh......',
+      '....HHhhHHHH....',
+      '...HHHHHhHHHHH..',
+      '..HHHHHHdHHHHH..',
+      '..HHHHHdSSdHHHH.',
+      '..HHHHdSSSSSdHH.',
+      '..HHHdSSSSSSSHH.',
+      '..HHHdSddSddSHH.',
+      '..HHHdSSESSESHh.',
+      '..HHHdSSSSSSSsH.',
+      '..HHHHSSSSSSsHH.',
+      '..HHHHsMWWWWMHH.',
+      '..hHHHsSMMMMsHH.',
+      '..HHHH.sSSSs.HH.',
+      '..HHH...ss...HH.',
     ],
     tijme: [
       '.....hHHHHh.....',
@@ -213,6 +264,11 @@
       for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) r(lx+i,26+j,1,1,(i + j) % 2 ? '#c8322b' : '#f4f1ea');
     };
     const sw = frame === 1 ? 1 : frame === 2 ? -1 : 0;
+    // pet achterstevoren, klep naar achteren
+    const cap = () => {
+      r(4,0,8,3,p.cap); r(5,0,5,1,p.capH || p.cap); r(4,3,8,1,p.capD || p.cap);
+      r(1,3,3,1,p.capD || p.cap); r(2,2,2,1,p.cap);
+    };
 
     // lang haar achter het lichaam
     if (p.style === 'long') { r(2,3,4,15,p.hair); r(2,13,3,5,p.hairD); r(3,4,1,9,p.hairH); }
@@ -252,6 +308,9 @@
       const pal = { H:p.hair, h:p.hairH, d:p.hairD, S:p.skin, s:p.skinD, E:INK, M:'#8a3434', W:'#ffffff' };
       HEADS[p.head].forEach((row, ly) => [...row].forEach((ch, lx) => { if (ch !== '.') r(lx, ly, 1, 1, pal[ch]); }));
       if (p.chore) { r(5,14,2,1,p.shirtD); r(10,14,2,1,p.shirtD); }
+      if (p.stache) r(7,10,6,1,'rgba(107,74,43,.4)');
+      if (p.style === 'long') { r(12,15,2,4,p.hair); r(13,17,1,2,p.hairD); }
+      if (p.cap) cap();
       return;
     }
 
@@ -284,6 +343,7 @@
       r(6,1,4,1,p.hairH); r(5,2,2,1,p.hairH);
     }
 
+    if (p.cap) cap();
     if (!over) {
       r(7,8,1,2,INK); r(10,8,1,2,INK);
       if (p.style !== 'fringe') { r(7,7,1,1,p.hairD); r(10,7,1,1,p.hairD); }
