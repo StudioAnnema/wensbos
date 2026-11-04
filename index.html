@@ -127,6 +127,7 @@
   .btn.del{font-size:9px;padding:8px 10px}
   .addform{margin-bottom:0}
   @media (max-width:560px){
+    .panel input,.panel textarea{font-size:16px} /* voorkomt automatisch inzoomen op iPhone */
     .head{flex-direction:column;text-align:center;gap:14px}
     .wish{grid-template-columns:auto 1fr}
     .wish .price{grid-column:2}
@@ -502,12 +503,13 @@
   const iris = document.getElementById('iris'), ig = iris.getContext('2d');
   let W, H, S, groundY;
   function resize() {
-    S = Math.max(2, Math.floor(Math.min(innerWidth, innerHeight * 1.6) / 320));
+    // telefoon rechtop: iets grotere pixels, anders worden de poppetjes piepklein
+    S = innerHeight > innerWidth ? Math.max(2, Math.floor(innerWidth / 125)) : Math.max(2, Math.floor(Math.min(innerWidth, innerHeight * 1.6) / 320));
     W = Math.ceil(innerWidth / S); H = Math.ceil(innerHeight / S);
     cv.width = W; cv.height = H; cv.style.width = W * S + 'px'; cv.style.height = H * S + 'px';
     iris.width = innerWidth; iris.height = innerHeight;
     groundY = H > W ? Math.round(H * 0.7) : H - Math.max(22, Math.round(H * 0.17));
-    heroes.forEach((h, i) => { h.home = W * (0.2 + i * 0.2); if (state !== 'intro') h.x = Math.min(Math.max(h.x, 10), W - 10); });
+    heroes.forEach((h, i) => { h.home = W * (0.2 + i * 0.2); if (state === 'play' || state === 'level') h.x = Math.min(Math.max(h.x, 10), W - 10); });
   }
   const hsh = n => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
 
