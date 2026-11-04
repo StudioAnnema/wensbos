@@ -10,4 +10,4 @@
   - ★ Nieuwe koptelefoon | €80 | https://www.voorbeeld.nl | in het zwart graag
 -->
 
-- ★ MIZU M8 waterfles groen (0,7 L) | ± €25 | https://campdebase.huttopia.com/en/collections/gourdes/products/mizu-gourde-m8 | Groen graag, of een customized versie
+- ★ MIZU M8 waterfles groen (750 ml) | €24 | https://mizulife.eu/products/m8 | Kleur Leaf, Spring Green of Safari Green — of een customized versie

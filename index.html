@@ -616,17 +616,27 @@
       g.fillStyle = '#e3ab82'; g.fillRect(x + 3, y + 3, 2, 2);
     }
   }
-  function palm(x, base) {
-    g.fillStyle = '#8a5a32';
-    for (let i = 0; i < 22; i++) g.fillRect(Math.round(x + Math.sin(i / 9) * 4), base - i, 2, 1);
-    const tx = Math.round(x + Math.sin(22 / 9) * 4), ty = base - 22;
-    [[-9,3],[-6,-2],[0,-4],[6,-2],[9,3]].forEach(([dx, dy]) => {
-      for (let s = 0; s <= 8; s++) {
-        const px = Math.round(tx + dx * s / 8), py = Math.round(ty + dy * s / 8 + (s * s) / 18);
-        g.fillStyle = s > 5 ? '#5aa94c' : '#3f8a3a'; g.fillRect(px, py, 2, 1);
+  function palm(x, base, k = 2.4) {
+    const th = Math.round(22 * k), lean = 4 * k;
+    // stam met ringen
+    for (let i = 0; i < th; i++) {
+      const px = Math.round(x + Math.sin(i / (9 * k)) * lean);
+      g.fillStyle = i % 4 === 0 ? '#6e4527' : '#8a5a32'; g.fillRect(px, base - i, 3, 1);
+      g.fillStyle = '#a7774a'; g.fillRect(px, base - i, 1, 1);
+    }
+    const tx = Math.round(x + Math.sin(th / (9 * k)) * lean), ty = base - th;
+    // bladeren
+    const len = Math.round(8 * k);
+    [[-9,4],[-7,-1],[-3,-4],[3,-4],[7,-1],[9,4],[-5,6],[5,6]].forEach(([dx, dy]) => {
+      for (let st = 0; st <= len; st++) {
+        const u = st / len;
+        const px = Math.round(tx + 1 + dx * k * u), py = Math.round(ty + dy * k * u + u * u * 5 * k);
+        g.fillStyle = u > 0.65 ? '#5aa94c' : '#3f8a3a'; g.fillRect(px, py, 2, 2);
+        if (st % 2 && u > 0.2) { g.fillStyle = '#2f6b39'; g.fillRect(px, py + 2, 1, 1); }
       }
     });
-    g.fillStyle = '#6b4a2b'; g.fillRect(tx, ty + 1, 2, 2);
+    // kokosnoten
+    g.fillStyle = '#5a3a22'; g.fillRect(tx - 1, ty + 1, 2, 2); g.fillRect(tx + 2, ty + 2, 2, 2);
   }
 
   function torii(x, base) {
@@ -736,7 +746,7 @@
       drawSea(t);
       gulls(t);
       sandGround(cam);
-      forEachInView(cam, 1, 90, (n, x) => { if (hsh(n + 33) > 0.35) palm(Math.round(x), groundY); });
+      forEachInView(cam, 1, 110, (n, x) => { if (hsh(n + 33) > 0.35) palm(Math.round(x), groundY, 2.1 + hsh(n + 34) * 0.8); });
     }
   }
 
