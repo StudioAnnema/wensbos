@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Het Wensbos</title>
+<meta name="description" content="De verlanglijsten van familie Annema &amp; Bos.">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1a1424; --night:#1b1f3a; --panel:#26305a; --panel-2:#323f74;
+    --paper:#f6eedc; --gold:#ffd23f; --gold-d:#c9971c; --leaf:#74c74f; --leaf-d:#3f7d35;
+    --red:#e04b3a; --muted:#a9b3d6;
+    --px:4px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:var(--night);color:var(--paper);overflow:hidden}
+  body{font-family:"Press Start 2P",monospace;-webkit-font-smoothing:none;-webkit-tap-highlight-color:transparent}
+  canvas{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
+  #world{position:fixed;inset:0;width:100vw;height:100vh}
+  #iris{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:50}
+
+  /* ---------- Titelscherm ---------- */
+  #title{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;
+    justify-content:flex-start;padding-top:12vh;text-align:center;cursor:pointer;gap:18px}
+  #title h1{font-size:clamp(28px,7.2vw,84px);line-height:1.05;color:var(--gold);letter-spacing:2px;
+    text-shadow:4px 0 var(--ink),-4px 0 var(--ink),0 4px var(--ink),0 -4px var(--ink),
+      4px 4px var(--ink),-4px 4px var(--ink),4px -4px var(--ink),-4px -4px var(--ink),
+      0 10px var(--gold-d),4px 10px var(--ink),-4px 10px var(--ink),0 14px var(--ink);
+    animation:bob 2.4s steps(4) infinite}
+  #title h1 span{display:block;color:var(--leaf);text-shadow:inherit;
+    text-shadow:4px 0 var(--ink),-4px 0 var(--ink),0 4px var(--ink),0 -4px var(--ink),
+      4px 4px var(--ink),-4px 4px var(--ink),4px -4px var(--ink),-4px -4px var(--ink),
+      0 10px var(--leaf-d),4px 10px var(--ink),-4px 10px var(--ink),0 14px var(--ink)}
+  #title .sub{font-size:clamp(9px,1.6vw,15px);color:var(--paper);text-shadow:3px 3px var(--ink);margin-top:14px;letter-spacing:1px}
+  #title .start{margin-top:auto;margin-bottom:22vh;font-size:clamp(11px,1.8vw,18px);color:#fff;
+    text-shadow:3px 3px var(--ink);animation:blink 1s steps(1) infinite;background:none;border:0;font-family:inherit;cursor:pointer;padding:12px}
+  #title .copy{position:absolute;bottom:18px;font-size:9px;color:var(--paper);opacity:.85;text-shadow:2px 2px var(--ink)}
+  @keyframes blink{50%{opacity:0}}
+  #title .start{animation-name:blinkSoft}
+  @keyframes blinkSoft{0%,64%{opacity:1}65%,100%{opacity:.15}}
+  @keyframes bob{50%{transform:translateY(-6px)}}
+  .hidden{display:none!important}
+
+  /* ---------- HUD ---------- */
+  #hud{position:fixed;top:0;left:0;right:0;z-index:30;display:flex;justify-content:space-between;align-items:flex-start;
+    padding:14px 16px;font-size:10px;pointer-events:none;text-shadow:2px 2px var(--ink)}
+  #hud .stat{line-height:1.8}
+  #hud .stat b{color:var(--gold);font-weight:normal}
+  #sound{pointer-events:auto;font-family:inherit;font-size:10px;color:var(--paper);background:var(--panel);
+    border:0;padding:8px 10px;cursor:pointer;box-shadow:0 0 0 3px var(--ink),inset -3px -3px 0 rgba(0,0,0,.35)}
+  #sound:focus-visible,.hero:focus-visible,.btn:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+  #hint{position:fixed;left:0;right:0;bottom:14px;z-index:30;text-align:center;font-size:9px;color:var(--paper);
+    text-shadow:2px 2px var(--ink);pointer-events:none;transition:opacity .4s}
+
+  /* ---------- Karakters (klikvlakken boven de canvas) ---------- */
+  #heroes{position:fixed;inset:0;z-index:10;pointer-events:none}
+  .hero{position:absolute;left:0;top:0;pointer-events:auto;background:none;border:0;cursor:pointer;font-family:inherit}
+  .tag{position:absolute;left:50%;bottom:100%;transform:translate(-50%,-6px);white-space:nowrap;font-size:9px;
+    color:var(--paper);background:var(--ink);padding:5px 6px 4px;box-shadow:0 0 0 2px var(--paper)}
+  .hero.sel .tag,.hero:hover .tag{color:var(--ink);background:var(--gold);box-shadow:0 0 0 2px var(--ink)}
+  .hero.sel .tag::before{content:"▼";position:absolute;left:50%;top:-18px;transform:translateX(-50%);color:var(--gold);
+    text-shadow:2px 2px var(--ink);animation:blink .8s steps(1) infinite}
+  .bubble{position:absolute;left:50%;bottom:100%;transform:translate(-50%,-34px);white-space:nowrap;font-size:8px;
+    color:var(--ink);background:#fff;padding:6px 7px 5px;box-shadow:0 0 0 2px var(--ink);opacity:0;transition:opacity .15s steps(2)}
+  .bubble::after{content:"";position:absolute;left:50%;top:100%;width:6px;height:6px;background:#fff;
+    box-shadow:2px 2px 0 0 var(--ink);transform:translateX(-50%)}
+  .bubble.on{opacity:1}
+
+  /* ---------- Level (verlanglijst) ---------- */
+  #level{position:fixed;inset:0;z-index:40;overflow-y:auto;background:
+      repeating-linear-gradient(0deg,rgba(255,255,255,.025) 0 4px,transparent 4px 8px),var(--night);
+    padding:22px 16px 60px}
+  .wrap{max-width:760px;margin:0 auto}
+  .topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:26px}
+  .btn{font-family:inherit;font-size:10px;color:var(--ink);background:var(--gold);border:0;padding:10px 12px 9px;cursor:pointer;
+    text-decoration:none;display:inline-block;box-shadow:0 0 0 3px var(--ink),inset -3px -3px 0 var(--gold-d)}
+  .btn:hover{transform:translateY(-2px)}
+  .btn:active{transform:translateY(1px);box-shadow:0 0 0 3px var(--ink),inset 3px 3px 0 var(--gold-d)}
+  .btn.ghost{background:var(--panel-2);color:var(--paper);box-shadow:0 0 0 3px var(--ink),inset -3px -3px 0 rgba(0,0,0,.35)}
+  .lvl-world{font-size:9px;color:var(--muted)}
+  .head{display:flex;gap:22px;align-items:center;background:var(--panel);padding:18px;margin-bottom:28px;
+    box-shadow:0 0 0 4px var(--ink),0 0 0 8px var(--paper),0 0 0 12px var(--ink)}
+  .head canvas{width:100px;height:165px;flex:none;background:linear-gradient(#5b7fbf,#b8cde6 70%,var(--leaf) 70%,var(--leaf) 76%,#8b5a34 76%)}
+  .head h2{font-size:clamp(18px,4vw,30px);color:var(--gold);text-shadow:3px 3px var(--ink);margin-bottom:14px;font-weight:normal}
+  .head p{font-size:10px;line-height:1.9;color:var(--paper)}
+  .head p b{color:var(--gold);font-weight:normal}
+  .list{display:grid;gap:18px;margin-bottom:34px}
+  .wish{background:var(--paper);color:var(--ink);padding:16px 16px 14px;display:grid;grid-template-columns:auto 1fr auto;gap:6px 14px;
+    align-items:start;box-shadow:0 0 0 4px var(--ink),inset -4px -4px 0 #d8ccb0;animation:pop .35s steps(4) both}
+  .wish .ico{width:28px;height:28px;background:var(--gold);box-shadow:0 0 0 3px var(--ink),inset -3px -3px 0 var(--gold-d);
+    display:grid;place-items:center;font-size:12px;grid-row:span 2}
+  .wish h3{font-size:12px;line-height:1.6;font-weight:normal;word-break:break-word}
+  .wish .price{font-size:11px;color:#9a6a00;white-space:nowrap;padding-top:2px}
+  .wish .note{grid-column:2/4;font-size:9px;line-height:1.8;color:#5b5470;word-break:break-word}
+  .wish .go{grid-column:2/4;justify-self:start;margin-top:6px}
+  .wish.fav .ico{background:var(--red);color:#fff;box-shadow:0 0 0 3px var(--ink),inset -3px -3px 0 #9c2c20}
+  @keyframes pop{from{transform:scale(.6);opacity:0}}
+  .empty{background:var(--panel);padding:26px 18px;text-align:center;font-size:10px;line-height:2;color:var(--muted);
+    box-shadow:0 0 0 4px var(--ink)}
+  .howto{border:3px dashed var(--muted);padding:18px;font-size:9px;line-height:2;color:var(--muted)}
+  .howto strong{color:var(--paper);font-weight:normal;display:block;margin-bottom:8px;font-size:10px}
+  .howto code{color:var(--gold);word-break:break-all}
+  .howto .btn{margin-top:14px}
+
+  @media (max-width:560px){
+    .head{flex-direction:column;text-align:center;gap:14px}
+    .wish{grid-template-columns:auto 1fr}
+    .wish .price{grid-column:2}
+    .wish .note,.wish .go{grid-column:1/3}
+    #hud{font-size:8px}
+    .tag{font-size:7px;padding:4px 4px 3px}
+    .bubble{font-size:7px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    #title h1,.wish{animation:none}
+  }
+</style>
+</head>
+<body>
+<canvas id="world" aria-hidden="true"></canvas>
+
+<section id="title" aria-label="Startscherm">
+  <h1>HET<span>WENSBOS</span></h1>
+  <p class="sub">FAMILIE ANNEMA &amp; BOS</p>
+  <button class="start" id="startBtn">▶ DRUK OP START</button>
+  <p class="copy">© 2026 STUDIO ANNEMA · 1 – 4 SPELERS</p>
+</section>
+
+<div id="hud" class="hidden">
+  <div class="stat">WERELD <b>1-1</b><br>WENSEN <b id="totaal">--</b></div>
+  <button id="sound" aria-pressed="false">♪ UIT</button>
+</div>
+<div id="heroes"></div>
+<p id="hint" class="hidden">KIES EEN SPELER</p>
+
+<section id="level" class="hidden" aria-live="polite"></section>
+
+<canvas id="iris" aria-hidden="true"></canvas>
+
+<script>
+(() => {
+  /* ================= Spelers ================= */
+  const PEOPLE = [
+    { id:'benno',  naam:'BENNO',  style:'shag',   short:true,
+      skin:'#e3ab82', skinD:'#c48a62', hair:'#b8935c', hairH:'#dcbb84', hairD:'#8a6a3e',
+      shirt:'#26272d', shirtD:'#17181c', pants:'#5f5848', shoes:'#5a3a22' },
+    { id:'tijme',  naam:'TIJME',  style:'swept',  short:true,
+      skin:'#f1c6a3', skinD:'#d6a27c', hair:'#6b4a2b', hairH:'#9c7650', hairD:'#4a321c',
+      shirt:'#2f7487', shirtD:'#245b6b', pants:'#4a5f86', shoes:'#f0f0f0' },
+    { id:'aletha', naam:'ALETHA', style:'long',   coat:true,
+      skin:'#f3caae', skinD:'#d9a585', hair:'#d2ae74', hairH:'#eed39e', hairD:'#a8854f',
+      shirt:'#27355c', shirtD:'#1b2644', shirtH:'#33467a', pants:'#1c1c24', shoes:'#1c1c24' },
+    { id:'sieb',   naam:'SIEB',   style:'fringe', short:true,
+      skin:'#f6d3bd', skinD:'#e0ab90', hair:'#d65f25', hairH:'#f08a3c', hairD:'#a8461a',
+      shirt:'#5e7fa3', shirtD:'#4b6789', pants:'#2a2a33', shoes:'#f0f0f0' },
+  ];
+  const REPO = 'https://github.com/studioannema/wensbos';
+  const INK = '#1a1424';
+  const SW = 16, SH = 28;
+
+  /* ================= Sprites (16×28, chibi, naar rechts kijkend) ================= */
+  function drawSprite(g, p, x, y, dir, frame, opts = {}) {
+    const over = opts.color;
+    const r = (lx, ly, w, h, c) => {
+      g.fillStyle = over || c;
+      g.fillRect(x + (dir > 0 ? lx : SW - lx - w), y + ly, w, h);
+    };
+    const legs = [[5,9],[4,10],[6,8]][frame] || [5,9];
+    const sw = frame === 1 ? 1 : frame === 2 ? -1 : 0;
+
+    // lang haar achter het lichaam
+    if (p.style === 'long') { r(2,3,4,15,p.hair); r(2,13,3,5,p.hairD); r(3,4,1,9,p.hairH); }
+
+    if (p.coat) {
+      // lange donsjas met gekruiste armen
+      r(legs[0],26,3,2,p.shoes); r(legs[1],26,3,2,p.shoes);
+      r(4,15,8,2,p.shirt); r(3,17,10,9,p.shirt);
+      r(3,20,10,1,p.shirtD); r(3,23,10,1,p.shirtD); r(3,25,10,1,p.shirtD);
+      r(2,17,12,3,p.shirtH); r(2,19,12,1,p.shirtD); r(7,17,2,2,p.shirtD);
+      r(5,14,6,2,p.shirt); r(6,14,4,1,p.shirtH);
+    } else {
+      r(legs[0],22,2,4,p.pants); r(legs[1],22,2,4,p.pants);
+      r(legs[0],26,3,2,p.shoes); r(legs[1],26,3,2,p.shoes);
+      r(4,15,8,7,p.shirt); r(4,21,8,1,p.shirtD);
+      const b = Math.max(0,-sw), f = Math.max(0,sw);
+      r(2,15+b,2,5,p.shirtD); r(12,15+f,2,5,p.shirt);
+      if (p.short) { r(2,17+b,2,3,p.skinD); r(12,17+f,2,3,p.skin); }
+      r(2,20+b,2,1,p.skinD); r(12,20+f,2,1,p.skin);
+      r(7,14,3,1,p.skinD);
+    }
+
+    // hoofd
+    r(5,3,6,1,p.skin); r(4,4,8,9,p.skin); r(5,13,6,1,p.skin);
+    r(4,9,1,2,p.skinD);
+
+    if (p.style === 'shag') {            // Benno: halflang, warrig blond
+      r(3,2,3,10,p.hair); r(4,1,8,3,p.hair); r(5,0,6,1,p.hair);
+      r(3,0,1,2,p.hair); r(11,1,2,2,p.hair);
+      r(5,4,3,1,p.hair); r(9,4,3,2,p.hair); r(11,6,1,2,p.hair);
+      r(3,9,3,3,p.hairD); r(4,4,1,1,p.hairD);
+      r(6,1,4,1,p.hairH); r(4,2,1,4,p.hairH);
+      r(6,12,5,1,'#c9a37a'); r(6,13,4,1,'#c9a37a');
+      r(8,15,1,3,'#3a3b42'); r(7,15,3,1,'#3a3b42');
+    } else if (p.style === 'swept') {    // Tijme: bruin, naar achteren geveegd
+      r(3,2,2,7,p.hair); r(4,1,8,3,p.hair); r(5,0,6,1,p.hair);
+      r(10,1,2,3,p.hair); r(12,2,1,2,p.hair);
+      r(4,4,1,4,p.hair); r(5,4,3,1,p.hair);
+      r(6,0,4,1,p.hairH); r(5,1,3,1,p.hairH); r(10,2,1,1,p.hairH);
+      r(3,6,1,3,p.hairD);
+      r(4,18,8,1,'#dfe6e8'); r(4,19,8,3,'#2b2f3a');
+    } else if (p.style === 'fringe') {   // Sieb: rood, volle pony
+      r(3,2,2,7,p.hair); r(4,1,8,3,p.hair); r(4,0,7,1,p.hair); r(3,1,1,4,p.hair);
+      r(5,4,7,2,p.hair); r(9,6,3,1,p.hair); r(11,4,2,3,p.hair); r(4,4,1,4,p.hair);
+      r(5,1,4,1,p.hairH); r(6,4,3,1,p.hairH); r(12,3,1,1,p.hairH);
+      r(3,6,1,3,p.hairD);
+      r(6,10,1,1,'#e09a7a'); r(8,10,1,1,'#e09a7a');
+      r(6,17,4,2,'#e9e1d0'); r(7,17,2,1,p.shirt);
+    } else if (p.style === 'long') {     // Aletha: lang blond
+      r(4,1,8,3,p.hair); r(5,0,6,1,p.hair);
+      r(4,4,1,7,p.hair); r(5,4,2,1,p.hair); r(10,4,2,1,p.hair);
+      r(12,4,1,9,p.hair); r(12,10,1,3,p.hairD);
+      r(6,1,4,1,p.hairH); r(5,2,2,1,p.hairH);
+    }
+
+    if (!over) {
+      r(7,8,1,2,INK); r(10,8,1,2,INK);
+      if (p.style !== 'fringe') { r(7,7,1,1,p.hairD); r(10,7,1,1,p.hairD); }
+      r(11,10,1,1,p.skinD);
+      r(7,11,1,1,'#8a3434'); r(8,12,2,1,'#8a3434'); r(10,11,1,1,'#8a3434');
+      r(5,11,1,1,'rgba(230,110,110,.45)');
+    }
+  }
+  function drawOutlined(g, p, x, y, dir, frame) {
+    for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) drawSprite(g, p, x+dx, y+dy, dir, frame, { color: INK });
+    drawSprite(g, p, x, y, dir, frame);
+  }
+
+  /* ================= Wereld ================= */
+  const cv = document.getElementById('world'), g = cv.getContext('2d');
+  const iris = document.getElementById('iris'), ig = iris.getContext('2d');
+  let W, H, S, groundY;
+  function resize() {
+    S = Math.max(2, Math.floor(Math.min(innerWidth / 120, innerHeight * 1.6 / 240)));
+    W = Math.ceil(innerWidth / S); H = Math.ceil(innerHeight / S);
+    cv.width = W; cv.height = H; cv.style.width = W * S + 'px'; cv.style.height = H * S + 'px';
+    iris.width = innerWidth; iris.height = innerHeight;
+    groundY = H > W ? Math.round(H * 0.7) : H - Math.max(22, Math.round(H * 0.17));
+    heroes.forEach((h, i) => { h.home = W * (0.2 + i * 0.2); if (state !== 'intro') h.x = Math.min(Math.max(h.x, 10), W - 10); });
+  }
+  const hsh = n => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+
+  function disc(cx, cy, rad, col) {
+    g.fillStyle = col;
+    for (let dy = -rad; dy <= rad; dy++) {
+      const hw = Math.floor(Math.sqrt(rad * rad - dy * dy));
+      g.fillRect(Math.round(cx - hw), Math.round(cy + dy), hw * 2 + 1, 1);
+    }
+  }
+  function pine(cx, base, h, dark, light) {
+    const tier = h / 3;
+    for (let i = 0; i < h; i++) {
+      const t = Math.floor(i / tier), half = 1 + Math.floor((i - t * tier) * 0.75) + t;
+      g.fillStyle = dark; g.fillRect(Math.round(cx - half), base - h + i, half * 2 + 1, 1);
+      g.fillStyle = light; g.fillRect(Math.round(cx - half), base - h + i, 1, 1);
+    }
+    g.fillStyle = '#4a2f1d'; g.fillRect(Math.round(cx) - 1, base, 3, 3);
+  }
+  function oak(cx, base, rad) {
+    g.fillStyle = '#5a3a22'; g.fillRect(Math.round(cx) - 1, base - rad, 3, rad + 2);
+    disc(cx, base - rad * 1.6, rad, '#2f6b39');
+    disc(cx - rad * .55, base - rad * 1.25, rad * .7, '#2f6b39');
+    disc(cx + rad * .6, base - rad * 1.3, rad * .75, '#2f6b39');
+    disc(cx - rad * .25, base - rad * 1.85, rad * .55, '#4c9147');
+    disc(cx - rad * .6, base - rad * 1.45, rad * .3, '#6cb55a');
+  }
+  function forEachInView(cam, f, spacing, fn) {
+    const start = Math.floor((cam * f - 40) / spacing), end = Math.ceil((cam * f + W + 40) / spacing);
+    for (let n = start; n <= end; n++) fn(n, n * spacing + hsh(n) * spacing * 0.6 - cam * f);
+  }
+
+  const SKY = ['#3a5596','#4b6aab','#5f80c0','#7896d0','#93acdc','#b2c6e6','#d6dcea','#f2dcb4'];
+  const clouds = Array.from({ length: 6 }, (_, i) => ({ x: hsh(i + 9) * 400, y: 14 + hsh(i + 3) * 40, s: 0.6 + hsh(i) * 0.8 }));
+  let leaves = [];
+  function spawnLeaves() {
+    const n = matchMedia('(prefers-reduced-motion: reduce)').matches ? 6 : 26;
+    leaves = Array.from({ length: n }, () => newLeaf(true));
+  }
+  function newLeaf(anywhere) {
+    return { x: Math.random() * W, y: anywhere ? Math.random() * H : -4, vy: 6 + Math.random() * 8, ph: Math.random() * 6,
+      c: ['#e8a33a','#d9652a','#f2c94c','#b8432e'][Math.floor(Math.random() * 4)] };
+  }
+
+  function drawWorld(t, cam) {
+    // lucht in banden
+    const band = Math.ceil(groundY / SKY.length);
+    SKY.forEach((c, i) => { g.fillStyle = c; g.fillRect(0, i * band, W, band + 1); });
+    // zon
+    disc(W * 0.8, groundY * 0.32, 13, '#ffe9b0'); disc(W * 0.8, groundY * 0.32, 10, '#fff6d6');
+    // wolken
+    clouds.forEach(c => {
+      const x = ((c.x + t * 4 * c.s - cam * 0.05) % (W + 80) + W + 80) % (W + 80) - 40, y = c.y * (groundY / 120);
+      disc(x, y + 2, 7 * c.s, '#d7e1f2'); disc(x + 9 * c.s, y, 9 * c.s, '#ffffff');
+      disc(x - 8 * c.s, y + 3, 6 * c.s, '#ffffff'); disc(x + 18 * c.s, y + 3, 6 * c.s, '#eef3fb');
+      g.fillStyle = '#ffffff'; g.fillRect(x - 12 * c.s, y + 4, 34 * c.s, 4 * c.s);
+    });
+    // verre heuvels
+    g.fillStyle = '#7e98c4';
+    for (let x = 0; x < W; x++) {
+      const wx = x + cam * 0.12, h = 30 + Math.sin(wx * 0.021) * 10 + Math.sin(wx * 0.053) * 5;
+      g.fillRect(x, groundY - h - 16, 1, h + 16);
+    }
+    // verre dennen
+    forEachInView(cam, 0.28, 9, (n, x) => pine(x, groundY - 8, 16 + Math.floor(hsh(n) * 12), '#3f6a6a', '#5a8a84'));
+    g.fillStyle = '#3f6a6a'; g.fillRect(0, groundY - 8, W, 8);
+    // middenlaag: eiken en dennen door elkaar
+    forEachInView(cam, 0.55, 26, (n, x) => {
+      if (hsh(n + 50) > 0.5) oak(x, groundY - 2, 9 + Math.floor(hsh(n + 7) * 5));
+      else pine(x, groundY - 2, 30 + Math.floor(hsh(n + 3) * 14), '#25553a', '#3f7d4c');
+    });
+    // struiken
+    forEachInView(cam, 0.85, 34, (n, x) => {
+      const r = 6 + Math.floor(hsh(n + 21) * 5);
+      disc(x, groundY - 1, r, '#3f8a3a'); disc(x + r, groundY, r * .8, '#3f8a3a');
+      disc(x - 2, groundY - r * .6, r * .5, '#5aa94c');
+    });
+    // grond
+    g.fillStyle = '#8b5a34'; g.fillRect(0, groundY, W, H - groundY);
+    g.fillStyle = '#74c74f'; g.fillRect(0, groundY, W, 3);
+    g.fillStyle = '#4f9e3a'; g.fillRect(0, groundY + 3, W, 1);
+    const off = cam % 8;
+    for (let x = -8; x < W + 8; x += 8) {
+      const n = Math.floor((x + cam) / 8);
+      g.fillStyle = '#74c74f'; g.fillRect(x - off + 2, groundY - 1, 1, 1); g.fillRect(x - off + 5, groundY - 1, 1, 1);
+      if (hsh(n) > 0.82) { g.fillStyle = hsh(n + 1) > 0.5 ? '#f2c94c' : '#e85a4f'; g.fillRect(x - off + 3, groundY - 2, 1, 1); }
+      for (let row = groundY + 6; row < H; row += 6) {
+        const m = n * 31 + row;
+        if (hsh(m) > 0.55) { g.fillStyle = '#6e4527'; g.fillRect(x - off + Math.floor(hsh(m + 2) * 6), row, 2, 2); }
+        if (hsh(m + 5) > 0.9) { g.fillStyle = '#a7774a'; g.fillRect(x - off + Math.floor(hsh(m + 3) * 6), row + 3, 1, 1); }
+      }
+    }
+  }
+
+  /* ================= Helden ================= */
+  const heroLayer = document.getElementById('heroes');
+  const heroes = PEOPLE.map((p, i) => {
+    const el = document.createElement('button');
+    el.className = 'hero'; el.setAttribute('aria-label', `Bekijk de verlanglijst van ${p.naam.toLowerCase()}`);
+    el.innerHTML = `<span class="bubble"></span><span class="tag">${p.naam}</span>`;
+    heroLayer.appendChild(el);
+    const h = { p, el, x: -30 - i * 22, y: 0, vy: 0, dir: 1, home: 0, target: 0, walking: false, wait: 1 + Math.random() * 2,
+      bubbleT: 3 + i * 2.2 + Math.random() * 2, count: null };
+    el.addEventListener('click', () => select(i, true));
+    el.addEventListener('mouseenter', () => { if (state === 'play') select(i, false); });
+    el.addEventListener('focus', () => { if (state === 'play') select(i, false); });
+    return h;
+  });
+  let selected = -1;
+  function select(i, open) {
+    if (state !== 'play') return;
+    if (selected !== i) { selected = i; heroes.forEach((h, j) => h.el.classList.toggle('sel', j === i)); sfx.blip(); }
+    if (open) openLevel(i);
+  }
+
+  function updateHeroes(dt) {
+    heroes.forEach(h => {
+      if (h.y < 0 || h.vy) { h.vy += 420 * dt; h.y += h.vy * dt; if (h.y >= 0) { h.y = 0; h.vy = 0; } }
+      if (state === 'intro') {
+        h.walking = h.x < h.home - 1; h.dir = 1;
+        if (h.walking) h.x = Math.min(h.home, h.x + 62 * dt);
+        return;
+      }
+      if (state !== 'play') return;
+      if (h.walking) {
+        const d = h.target - h.x; h.dir = Math.sign(d) || h.dir;
+        h.x += Math.sign(d) * Math.min(Math.abs(d), 18 * dt);
+        if (Math.abs(d) < 0.5) { h.walking = false; h.wait = 1.5 + Math.random() * 3; }
+      } else if ((h.wait -= dt) <= 0) {
+        if (Math.random() < 0.25) { h.vy = -95; h.wait = 1 + Math.random() * 2; sfx.hop(); }
+        else { h.target = h.home + (Math.random() - 0.5) * W * 0.12; h.walking = true; }
+      }
+      if ((h.bubbleT -= dt) <= 0) {
+        const b = h.el.querySelector('.bubble');
+        b.textContent = bubbleText(h); b.classList.add('on');
+        setTimeout(() => b.classList.remove('on'), 2600);
+        h.bubbleT = 7 + Math.random() * 7;
+      }
+    });
+  }
+  function bubbleText(h) {
+    const pool = ['HALLO!', 'KIES MIJ!', 'WAT EEN BOS!'];
+    if (h.count === 0) pool.push('NOG GEEN WENSEN...');
+    if (h.count > 0) pool.push(`NOG ${h.count} ${h.count === 1 ? 'WENS' : 'WENSEN'}!`, `${h.count}× WENS!`);
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+  function drawHeroes(t) {
+    heroes.forEach(h => {
+      if (h.x < -20) return;
+      const frame = h.y < 0 ? 1 : h.walking ? [1,0,2,0][Math.floor(t * (state === 'intro' ? 12 : 7)) % 4] : 0;
+      const x = Math.round(h.x - SW / 2), y = Math.round(groundY - SH + h.y);
+      g.fillStyle = 'rgba(26,20,36,.25)'; g.fillRect(Math.round(h.x - 6), groundY, 12, 1);
+      drawOutlined(g, h.p, x, y, h.dir, frame);
+      h.el.style.transform = `translate(${(h.x - 10) * S}px, ${(groundY - 31 + h.y) * S}px)`;
+      h.el.style.width = 20 * S + 'px'; h.el.style.height = 32 * S + 'px';
+    });
+  }
+
+  /* ================= Geluid (chiptune, standaard uit) ================= */
+  let ac = null, soundOn = false;
+  try { soundOn = localStorage.getItem('wensbos-geluid') === 'aan'; } catch {}
+  const sfx = {
+    tone(f, d, when = 0, type = 'square', vol = 0.06) {
+      if (!soundOn) return;
+      ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+      const o = ac.createOscillator(), v = ac.createGain(), t0 = ac.currentTime + when;
+      o.type = type; o.frequency.setValueAtTime(f, t0);
+      v.gain.setValueAtTime(vol, t0); v.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+      o.connect(v).connect(ac.destination); o.start(t0); o.stop(t0 + d);
+    },
+    blip() { this.tone(660, .07); },
+    hop() { this.tone(330, .09, 0, 'square', .03); this.tone(440, .08, .05, 'square', .03); },
+    coin() { this.tone(988, .08); this.tone(1319, .25, .08); },
+    start() { [523, 659, 784, 1047, 784, 1047].forEach((f, i) => this.tone(f, .14, i * .1, 'square', .05)); },
+    back() { this.tone(523, .08); this.tone(392, .14, .08); },
+  };
+  const soundBtn = document.getElementById('sound');
+  function renderSound() { soundBtn.textContent = soundOn ? '♪ AAN' : '♪ UIT'; soundBtn.setAttribute('aria-pressed', soundOn); }
+  soundBtn.addEventListener('click', () => {
+    soundOn = !soundOn; renderSound();
+    try { localStorage.setItem('wensbos-geluid', soundOn ? 'aan' : 'uit'); } catch {}
+    sfx.blip();
+  });
+  renderSound();
+
+  /* ================= Iris-overgang ================= */
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function irisTo(cx, cy, closing, ms = 650) {
+    return new Promise(res => {
+      if (reduce) { ig.clearRect(0, 0, iris.width, iris.height); if (closing) { ig.fillStyle = '#000'; ig.fillRect(0, 0, iris.width, iris.height); } return res(); }
+      const max = Math.hypot(Math.max(cx, iris.width - cx), Math.max(cy, iris.height - cy));
+      const t0 = performance.now();
+      (function step(now) {
+        const k = Math.min(1, (now - t0) / ms), e = closing ? 1 - k : k;
+        const rad = Math.max(0, max * e);
+        ig.globalCompositeOperation = 'source-over'; ig.clearRect(0, 0, iris.width, iris.height);
+        ig.fillStyle = '#000'; ig.fillRect(0, 0, iris.width, iris.height);
+        ig.globalCompositeOperation = 'destination-out';
+        // getrapte cirkel voor het pixelgevoel
+        const q = 8;
+        for (let y = -rad; y <= rad; y += q) {
+          const hw = Math.sqrt(Math.max(0, rad * rad - y * y));
+          ig.fillRect(Math.floor((cx - hw) / q) * q, Math.floor((cy + y) / q) * q, Math.ceil(hw * 2 / q) * q + q, q);
+        }
+        ig.globalCompositeOperation = 'source-over';
+        if (k < 1) requestAnimationFrame(step); else res();
+      })(t0);
+    });
+  }
+
+  /* ================= Wensen laden ================= */
+  const wishes = {};
+  function parseWensen(md) {
+    return md.replace(/<!--[\s\S]*?-->/g, '').split(/\r?\n/)
+      .filter(l => /^\s*[-*]\s+\S/.test(l))
+      .map(l => {
+        const [titel = '', prijs = '', link = '', notitie = ''] = l.replace(/^\s*[-*]\s+/, '').split('|').map(s => s.trim());
+        const fav = /^(★|\*)/.test(titel);
+        return { titel: titel.replace(/^(★|\*)\s*/, ''), prijs, link: /^https?:\/\//i.test(link) ? link : '', notitie, fav };
+      })
+      .filter(w => w.titel);
+  }
+  async function loadAll() {
+    await Promise.all(PEOPLE.map(async (p, i) => {
+      try {
+        const res = await fetch(`wensen/${p.id}.md`, { cache: 'no-store' });
+        wishes[p.id] = res.ok ? parseWensen(await res.text()) : [];
+      } catch { wishes[p.id] = []; }
+      heroes[i].count = wishes[p.id].length;
+    }));
+    document.getElementById('totaal').textContent = String(Object.values(wishes).reduce((a, l) => a + l.length, 0)).padStart(2, '0');
+  }
+
+  /* ================= Level-scherm ================= */
+  const level = document.getElementById('level');
+  const esc = s => s.replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  function renderLevel(i) {
+    const p = PEOPLE[i], list = wishes[p.id] || [];
+    const editUrl = `${REPO}/edit/main/wensen/${p.id}.md`;
+    level.innerHTML = `
+      <div class="wrap">
+        <div class="topbar">
+          <button class="btn ghost" id="back">◀ TERUG</button>
+          <span class="lvl-world">WERELD 1-${i + 1}</span>
+        </div>
+        <div class="head">
+          <canvas width="20" height="33" id="portrait"></canvas>
+          <div>
+            <h2>${p.naam}</h2>
+            <p>${list.length ? `HEEFT <b>${list.length}</b> ${list.length === 1 ? 'WENS' : 'WENSEN'} IN HET BOS.` : 'HEEFT NOG GEEN WENSEN VERSTOPT.'}<br>
+            ${list.some(w => w.fav) ? '<b>♥</b> = HEEL GRAAG!' : ''}</p>
+          </div>
+        </div>
+        <div class="list">
+          ${list.length ? list.map((w, k) => `
+            <article class="wish${w.fav ? ' fav' : ''}" style="animation-delay:${k * 70}ms">
+              <span class="ico" aria-hidden="true">${w.fav ? '♥' : '★'}</span>
+              <h3>${esc(w.titel)}</h3>
+              <span class="price">${esc(w.prijs)}</span>
+              ${w.notitie ? `<p class="note">${esc(w.notitie)}</p>` : ''}
+              ${w.link ? `<a class="btn go" href="${esc(w.link)}" target="_blank" rel="noopener noreferrer">BEKIJK ▶</a>` : ''}
+            </article>`).join('') : `<div class="empty">HIER GROEIT NOG NIETS...<br>KOM LATER TERUG!</div>`}
+        </div>
+        <div class="howto">
+          <strong>WENS TOEVOEGEN?</strong>
+          Open je eigen bestand op GitHub en zet er per wens een regel bij:<br>
+          <code>- Titel | prijs | link | notitie</code><br>
+          Begin met <code>★</code> als je iets heel graag wilt. Opslaan = binnen een minuutje online.
+          <br><a class="btn" href="${editUrl}" target="_blank" rel="noopener noreferrer">✎ BEWERK ${p.naam}.MD</a>
+        </div>
+      </div>`;
+    const pc = level.querySelector('#portrait').getContext('2d');
+    drawOutlined(pc, p, 2, 3, 1, 0);
+    level.querySelector('#back').addEventListener('click', closeLevel);
+  }
+
+  let busy = false;
+  async function openLevel(i, instant = false) {
+    if (busy) return; busy = true;
+    const h = heroes[i];
+    if (!instant) {
+      sfx.coin(); h.vy = -120; h.walking = false;
+      await new Promise(r => setTimeout(r, 380));
+      await irisTo(h.x * S, (groundY - 16) * S, true);
+    }
+    renderLevel(i);
+    level.classList.remove('hidden'); level.scrollTop = 0;
+    state = 'level';
+    if (location.hash !== `#/${h.p.id}`) history.pushState(null, '', `#/${h.p.id}`);
+    if (!instant) await irisTo(innerWidth / 2, innerHeight * 0.3, false);
+    else ig.clearRect(0, 0, iris.width, iris.height);
+    level.querySelector('#back').focus({ preventScroll: true });
+    busy = false;
+  }
+  async function closeLevel(fromHistory) {
+    if (busy || state !== 'level') return; busy = true;
+    sfx.back();
+    await irisTo(innerWidth / 2, innerHeight * 0.3, true, 450);
+    level.classList.add('hidden'); state = 'play'; showPlayUI();
+    if (fromHistory !== true) history.pushState(null, '', location.pathname + location.search);
+    const h = heroes[selected] || heroes[0];
+    await irisTo(h.x * S, (groundY - 16) * S, false, 550);
+    h.el.focus({ preventScroll: true });
+    busy = false;
+  }
+
+  /* ================= Spelverloop ================= */
+  let state = 'title', cam = 0, mouseX = 0.5, last = performance.now(), T = 0;
+  const titleEl = document.getElementById('title'), hud = document.getElementById('hud'), hint = document.getElementById('hint');
+  function showPlayUI() { titleEl.classList.add('hidden'); hud.classList.remove('hidden'); hint.classList.remove('hidden'); }
+  function start() {
+    if (state !== 'title') return;
+    sfx.start(); state = 'intro'; showPlayUI();
+    hint.style.opacity = 0;
+  }
+  function placeHeroesAtHome() { heroes.forEach(h => { h.x = h.home; h.walking = false; h.vy = 0; h.y = 0; }); }
+
+  titleEl.addEventListener('click', start);
+  addEventListener('keydown', e => {
+    if (state === 'title' && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); start(); }
+    else if (state === 'play' && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
+      const n = selected < 0 ? 0 : (selected + (e.key === 'ArrowRight' ? 1 : -1) + heroes.length) % heroes.length;
+      select(n, false); heroes[n].el.focus({ preventScroll: true });
+    } else if (state === 'level' && e.key === 'Escape') closeLevel();
+  });
+  addEventListener('pointermove', e => { mouseX = e.clientX / innerWidth; });
+  addEventListener('resize', resize);
+  addEventListener('popstate', () => {
+    const i = PEOPLE.findIndex(p => `#/${p.id}` === location.hash);
+    if (i >= 0 && state === 'play') openLevel(i);
+    else if (i >= 0 && state === 'level' && !busy) { selected = i; renderLevel(i); level.scrollTop = 0; }
+    else if (i < 0 && state === 'level') closeLevel(true);
+  });
+
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now; T += dt;
+    if (state === 'title') cam += 14 * dt;
+    else if (state === 'intro') {
+      cam += 40 * dt;
+      if (heroes.every(h => h.x >= h.home - 1)) {
+        state = 'play'; hint.style.opacity = 1;
+        heroes.forEach(h => { h.walking = false; h.wait = 0.5 + Math.random() * 2; });
+        setTimeout(() => { hint.style.opacity = 0; }, 5000);
+      }
+    }
+    const camView = cam + (state === 'play' ? (mouseX - 0.5) * 24 : 0);
+    updateHeroes(dt);
+    if (state !== 'level') {
+      drawWorld(T, camView);
+      if (state !== 'title') drawHeroes(T);
+      leaves.forEach((l, k) => {
+        l.y += l.vy * dt; l.x += Math.sin(T * 2 + l.ph) * 8 * dt - 3 * dt;
+        if (l.y > H || l.x < -4) leaves[k] = newLeaf(false);
+        g.fillStyle = l.c; g.fillRect(Math.round(l.x), Math.round(l.y), Math.sin(T * 4 + l.ph) > 0 ? 2 : 1, 1);
+      });
+    }
+    requestAnimationFrame(frame);
+  }
+
+  resize(); spawnLeaves();
+  const loaded = loadAll();
+  // direct naar een lijst via #/naam (deelbare link)
+  const deep = PEOPLE.findIndex(p => `#/${p.id}` === location.hash);
+  if (deep >= 0) {
+    showPlayUI(); placeHeroesAtHome(); state = 'play'; hint.style.opacity = 0;
+    loaded.then(() => openLevel(deep, true));
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
