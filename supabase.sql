@@ -89,6 +89,17 @@ begin
   return nieuw;
 end $$;
 
+create or replace function public.cadeau_bijwerken(p_lid text, p_code text, p_id uuid, p_titel text, p_prijs text,
+                                                   p_link text, p_notitie text, p_fav boolean)
+returns void language plpgsql security definer set search_path = public, extensions as $$
+begin
+  if not check_code(p_lid, p_code) then raise exception 'Code klopt niet'; end if;
+  update cadeaus set titel = trim(p_titel), prijs = coalesce(trim(p_prijs), ''), link = coalesce(trim(p_link), ''),
+                     notitie = coalesce(trim(p_notitie), ''), fav = coalesce(p_fav, false)
+   where id = p_id and eigenaar = p_lid;
+  if not found then raise exception 'Cadeau niet gevonden'; end if;
+end $$;
+
 create or replace function public.cadeau_verwijderen(p_lid text, p_code text, p_id uuid)
 returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
@@ -111,9 +122,11 @@ end $$;
 
 revoke all on function public.lijsten(text), public.lid_status(text), public.check_code(text, text),
   public.code_instellen(text, text), public.cadeau_toevoegen(text, text, text, text, text, text, boolean),
+  public.cadeau_bijwerken(text, text, uuid, text, text, text, text, boolean),
   public.cadeau_verwijderen(text, text, uuid), public.reserveren(text, text, uuid, boolean) from public;
 grant execute on function public.lijsten(text), public.lid_status(text), public.check_code(text, text),
   public.code_instellen(text, text), public.cadeau_toevoegen(text, text, text, text, text, text, boolean),
+  public.cadeau_bijwerken(text, text, uuid, text, text, text, text, boolean),
   public.cadeau_verwijderen(text, text, uuid), public.reserveren(text, text, uuid, boolean) to anon, authenticated;
 
 -- 3. Familieleden ---------------------------------------------------------

@@ -126,8 +126,17 @@
   .acts{grid-column:2/4;display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:6px}
   .btn.del{font-size:9px;padding:8px 10px}
   .addform{margin-bottom:0}
+  .quiet .wish{animation:none}
+  .wish.editing{display:block}
+  .editform label{display:block;font-size:9px;color:#5b5470;margin:10px 0 4px;line-height:1.7}
+  .editform label:first-child{margin-top:0}
+  .editform input{display:block;width:100%;margin-top:4px;font-family:inherit;font-size:11px;padding:9px;border:0;
+    background:#fff;color:var(--ink);box-shadow:inset 0 0 0 2px var(--ink)}
+  .editform .check{display:flex;gap:8px;align-items:center}
+  .editform .check input{width:auto;margin:0;box-shadow:none}
+  .editform .row{display:flex;gap:12px;flex-wrap:wrap;margin-top:14px}
   @media (max-width:560px){
-    .panel input,.panel textarea{font-size:16px} /* voorkomt automatisch inzoomen op iPhone */
+    .panel input,.panel textarea,.editform input{font-size:16px} /* voorkomt automatisch inzoomen op iPhone */
     .head{flex-direction:column;text-align:center;gap:14px}
     .wish{grid-template-columns:auto 1fr}
     .wish .price{grid-column:2}
@@ -1018,7 +1027,8 @@
   function itemActions(w, own) {
     const parts = [];
     if (w.link) parts.push(`<a class="btn go" href="${esc(w.link)}" target="_blank" rel="noopener noreferrer">BEKIJK ▶</a>`);
-    if (own) parts.push(`<button class="btn ghost del" data-del="${esc(w.id)}">✕ WEGHALEN</button>`);
+    if (own) parts.push(`<button class="btn ghost del" data-edit="${esc(w.id)}">BEWERKEN</button>`,
+                        `<button class="btn ghost del" data-del="${esc(w.id)}">✕ WEGHALEN</button>`);
     return parts.length ? `<div class="acts">${parts.join('')}</div>` : '';
   }
   function footer(p, own) {
@@ -1044,11 +1054,20 @@
         </form>`;
     return '';
   }
-  function renderLevel(i) {
+  // Velden uit het toevoeg- of bewerkformulier halen en controleren.
+  function readGift(form) {
+    const f = new FormData(form), link = String(f.get('link') || '').trim();
+    if (link && !safeLink(link)) throw new Error('DE LINK MOET MET https:// BEGINNEN.');
+    return { p_titel: String(f.get('titel')).trim(), p_prijs: String(f.get('prijs') || '').trim(), p_link: link,
+             p_notitie: String(f.get('notitie') || '').trim(), p_fav: f.get('fav') === 'on' };
+  }
+  // quiet = na opslaan/weghalen: geen inplop-animatie en op dezelfde plek blijven staan
+  function renderLevel(i, quiet = false) {
     const p = PEOPLE[i], list = wishes[p.id] || [];
     const own = !!(DB && me && me.id === p.id);
+    const keep = level.scrollTop;
     level.innerHTML = `
-      <div class="wrap">
+      <div class="wrap${quiet ? ' quiet' : ''}">
         <div class="topbar">
           <button class="btn ghost" id="back">◀ TERUG</button>
           ${DB ? `<button class="btn ghost" id="lvlWho">${me ? 'IK: ' + esc(PEOPLE.find(x => x.id === me.id)?.naam || '?') : '▶ WIE BEN JIJ?'}</button>` : `<span class="lvl-world">WERELD 1-${i + 1}</span>`}
@@ -1073,6 +1092,7 @@
         </div>
         ${footer(p, own)}
       </div>`;
+    if (quiet) level.scrollTop = keep;
     const pc = level.querySelector('#portrait').getContext('2d');
     drawOutlined(pc, p, 2, 3, 1, 0);
     level.querySelector('#back').addEventListener('click', closeLevel);
@@ -1082,17 +1102,38 @@
       if (!confirm('Dit cadeau van je lijstje halen?')) return;
       try { await rpc('cadeau_verwijderen', { p_lid: me.id, p_code: me.code, p_id: b.dataset.del }); sfx.back(); }
       catch (e) { alert('Dat lukte niet: ' + e.message); }
-      await loadAll(); renderLevel(i);
+      await loadAll(); renderLevel(i, true);
+    }));
+    level.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => {
+      const w = list.find(x => x.id === b.dataset.edit), art = b.closest('.wish');
+      if (!w || !art) return;
+      art.classList.add('editing');
+      art.innerHTML = `<form class="editform">
+          <label>TITEL <input name="titel" required maxlength="120" value="${esc(w.titel)}"></label>
+          <label>PRIJS <input name="prijs" maxlength="30" value="${esc(w.prijs)}"></label>
+          <label>LINK <input name="link" type="url" maxlength="500" value="${esc(w.link)}"></label>
+          <label>NOTITIE <input name="notitie" maxlength="200" value="${esc(w.notitie)}"></label>
+          <label class="check"><input type="checkbox" name="fav"${w.fav ? ' checked' : ''}> ♥ HEEL GRAAG</label>
+          <p class="err"></p>
+          <div class="row"><button class="btn" type="submit">✓ OPSLAAN</button><button class="btn ghost" type="button" data-cancel>ANNULEER</button></div>
+        </form>`;
+      const ef = art.querySelector('form');
+      ef.querySelector('[data-cancel]').addEventListener('click', () => renderLevel(i, true));
+      ef.addEventListener('submit', async e => {
+        e.preventDefault();
+        try {
+          await rpc('cadeau_bijwerken', { p_lid: me.id, p_code: me.code, p_id: w.id, ...readGift(ef) });
+          sfx.coin(); await loadAll(); renderLevel(i, true);
+        } catch (err) { ef.querySelector('.err').textContent = 'OPSLAAN MISLUKT: ' + err.message.toUpperCase(); }
+      });
+      ef.querySelector('input').focus();
     }));
     const form = level.querySelector('#addForm');
     if (form) form.addEventListener('submit', async e => {
       e.preventDefault();
-      const f = new FormData(form), link = String(f.get('link') || '').trim();
-      if (link && !safeLink(link)) { level.querySelector('#addErr').textContent = 'DE LINK MOET MET https:// BEGINNEN.'; return; }
       try {
-        await rpc('cadeau_toevoegen', { p_lid: me.id, p_code: me.code, p_titel: String(f.get('titel')).trim(),
-          p_prijs: String(f.get('prijs') || '').trim(), p_link: link, p_notitie: String(f.get('notitie') || '').trim(), p_fav: f.get('fav') === 'on' });
-        sfx.coin(); await loadAll(); renderLevel(i);
+        await rpc('cadeau_toevoegen', { p_lid: me.id, p_code: me.code, ...readGift(form) });
+        sfx.coin(); await loadAll(); renderLevel(i, true);
       } catch (err) { level.querySelector('#addErr').textContent = 'OPSLAAN MISLUKT: ' + err.message.toUpperCase(); }
     });
   }
@@ -1120,6 +1161,7 @@
     sfx.back();
     await irisTo(innerWidth / 2, innerHeight * 0.3, true, 450);
     level.classList.add('hidden'); state = 'play'; showPlayUI();
+    if (pendingResize) { pendingResize = false; resize(); }
     if (fromHistory !== true) history.pushState(null, '', location.pathname + location.search);
     const h = heroes[selected] || heroes[0];
     await irisTo(h.x * S, (groundY - 16) * S, false, 550);
@@ -1151,7 +1193,13 @@
     } else if (state === 'level' && e.key === 'Escape') closeLevel();
   });
   addEventListener('pointermove', e => { mouseX = e.clientX / innerWidth; });
-  addEventListener('resize', resize);
+  // Op telefoons verandert het toetsenbord de schermhoogte; dan pas opnieuw schalen als het weer dicht is.
+  let pendingResize = false;
+  const typing = () => document.activeElement?.matches('input, textarea');
+  addEventListener('resize', () => { if (state === 'level' || typing()) { pendingResize = true; return; } resize(); });
+  addEventListener('focusout', () => setTimeout(() => {
+    if (pendingResize && state !== 'level' && !typing()) { pendingResize = false; resize(); }
+  }, 300));
   addEventListener('popstate', () => {
     const i = PEOPLE.findIndex(p => `#/${p.id}` === location.hash);
     if (i >= 0 && state === 'play') openLevel(i);
