@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Het Wensbos</title>
-<meta name="description" content="De verlanglijsten van familie Annema &amp; Bos.">
+<meta name="description" content="De verlanglijstjes van familie Annema &amp; Bos.">
 <meta name="robots" content="noindex">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -106,11 +106,34 @@
   .howto code{color:var(--gold);word-break:break-all}
   .howto .btn{margin-top:14px}
 
+  .hud-btns{display:flex;gap:10px;pointer-events:auto}
+  #who{font-family:inherit;font-size:10px;color:var(--ink);background:var(--gold);border:0;padding:8px 10px;cursor:pointer;
+    box-shadow:0 0 0 3px var(--ink),inset -3px -3px 0 var(--gold-d)}
+  .modal{position:fixed;inset:0;z-index:60;background:rgba(10,8,20,.75);display:grid;place-items:center;padding:16px}
+  .panel{background:var(--panel);padding:22px;width:min(420px,100%);box-shadow:0 0 0 4px var(--ink),0 0 0 8px var(--paper),0 0 0 12px var(--ink)}
+  .panel h2{font-size:14px;color:var(--gold);font-weight:normal;margin-bottom:16px;text-shadow:2px 2px var(--ink)}
+  .panel label{display:block;font-size:9px;color:var(--muted);margin:12px 0 6px;line-height:1.8}
+  .panel input,.panel textarea{display:block;width:100%;margin-top:6px;font-family:inherit;font-size:11px;padding:10px;border:0;
+    background:var(--paper);color:var(--ink);box-shadow:inset 3px 3px 0 #d8ccb0}
+  .panel .row{display:flex;flex-wrap:wrap;gap:12px;margin-top:16px}
+  .panel .check{display:flex;gap:10px;align-items:center}
+  .panel .check input{width:auto;margin:0}
+  .who-pick{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .who-pick button{font-family:inherit;font-size:10px;padding:10px;border:0;cursor:pointer;background:var(--panel-2);color:var(--paper);box-shadow:0 0 0 3px var(--ink)}
+  .who-pick button[aria-pressed="true"]{background:var(--gold);color:var(--ink)}
+  .err{color:#ff8a7a;font-size:9px;line-height:1.8;min-height:1em;margin-top:10px}
+  .acts{grid-column:2/4;display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:6px}
+  .btn.res{background:var(--leaf);box-shadow:0 0 0 3px var(--ink),inset -3px -3px 0 var(--leaf-d)}
+  .btn.res.mine{background:#9fd3ff;box-shadow:0 0 0 3px var(--ink),inset -3px -3px 0 #5a9ad0}
+  .btn.del{font-size:9px;padding:8px 10px}
+  .claimed{font-size:9px;color:#fff;background:#7a6f8f;padding:7px 8px;box-shadow:0 0 0 3px var(--ink)}
+  .wish.taken{opacity:.75}
+  .addform{margin-bottom:0}
   @media (max-width:560px){
     .head{flex-direction:column;text-align:center;gap:14px}
     .wish{grid-template-columns:auto 1fr}
     .wish .price{grid-column:2}
-    .wish .note,.wish .go{grid-column:1/3}
+    .wish .note,.wish .go,.acts{grid-column:1/3}
     #hud{font-size:8px}
     .tag{font-size:7px;padding:4px 4px 3px}
     .bubble{font-size:7px}
@@ -131,15 +154,25 @@
 </section>
 
 <div id="hud" class="hidden">
-  <div class="stat">WERELD <b id="wereld">1-1</b><br>WENSEN <b id="totaal">--</b></div>
-  <button id="sound" aria-pressed="false">♪ UIT</button>
+  <div class="stat">WERELD <b id="wereld">1-1</b><br>CADEAUS <b id="totaal">--</b></div>
+  <span class="hud-btns"><button id="who" class="hidden">▶ WIE BEN JIJ?</button><button id="sound" aria-pressed="false">♪ UIT</button></span>
 </div>
 <div id="heroes"></div>
 <p id="hint" class="hidden">KIES EEN SPELER</p>
 
 <section id="level" class="hidden" aria-live="polite"></section>
 
+<div id="login" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+  <div class="panel">
+    <h2 id="loginTitle">WIE BEN JIJ?</h2>
+    <div class="who-pick" id="whoPick"></div>
+    <p class="err">DEZE BROWSER ONTHOUDT JE KEUZE.</p>
+    <div class="row"><button class="btn ghost" type="button" id="loginCancel">ANNULEER</button><button class="btn ghost hidden" type="button" id="logout">IK BEN NIEMAND HIERVAN</button></div>
+  </div>
+</div>
+
 <canvas id="iris" aria-hidden="true"></canvas>
+<script src="config.js"></script>
 
 <script>
 (() => {
@@ -798,8 +831,8 @@
   }
   function bubbleText(h) {
     const pool = ['HALLO!', 'KIES MIJ!', 'WAT EEN BOS!'];
-    if (h.count === 0) pool.push('NOG GEEN WENSEN...');
-    if (h.count > 0) pool.push(`NOG ${h.count} ${h.count === 1 ? 'WENS' : 'WENSEN'}!`, `${h.count}× WENS!`);
+    if (h.count === 0) pool.push('LIJSTJE IS NOG LEEG...');
+    if (h.count > 0) pool.push(`${h.count} ${h.count === 1 ? 'CADEAU' : 'CADEAUS'} OP M'N LIJSTJE!`, `${h.count}× CADEAU!`);
     return pool[Math.floor(Math.random() * pool.length)];
   }
   function drawHeroes(t) {
@@ -866,70 +899,180 @@
     });
   }
 
-  /* ================= Wensen laden ================= */
+  /* ================= Cadeaus laden: database (Supabase) of, zonder config, de .md-bestanden ================= */
+  const CFG = window.WENSBOS_DB || {};
+  const DB = CFG.url && CFG.anonKey ? CFG : null;
   const wishes = {};
+  let me = null; // { id } — wie je bent, alleen in deze browser bewaard
+  try { me = JSON.parse(localStorage.getItem('wensbos-ik') || 'null'); } catch {}
+  async function rpc(fn, args = {}) {
+    const res = await fetch(`${DB.url}/rest/v1/rpc/${fn}`, {
+      method: 'POST',
+      headers: { apikey: DB.anonKey, Authorization: `Bearer ${DB.anonKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(args),
+    });
+    const text = await res.text();
+    if (!res.ok) { let m = text; try { m = JSON.parse(text).message || text; } catch {} throw new Error(m); }
+    return text ? JSON.parse(text) : null;
+  }
+  const safeLink = l => /^https?:\/\//i.test(l || '') ? l : '';
   function parseWensen(md) {
     return md.replace(/<!--[\s\S]*?-->/g, '').split(/\r?\n/)
       .filter(l => /^\s*[-*]\s+\S/.test(l))
       .map(l => {
         const [titel = '', prijs = '', link = '', notitie = ''] = l.replace(/^\s*[-*]\s+/, '').split('|').map(s => s.trim());
         const fav = /^(★|\*)/.test(titel);
-        return { titel: titel.replace(/^(★|\*)\s*/, ''), prijs, link: /^https?:\/\//i.test(link) ? link : '', notitie, fav };
+        return { titel: titel.replace(/^(★|\*)\s*/, ''), prijs, link: safeLink(link), notitie, fav };
       })
       .filter(w => w.titel);
   }
   async function loadAll() {
-    await Promise.all(PEOPLE.map(async (p, i) => {
+    PEOPLE.forEach(p => { wishes[p.id] = []; });
+    if (DB) {
       try {
-        const res = await fetch(`wensen/${p.id}.md`, { cache: 'no-store' });
-        wishes[p.id] = res.ok ? parseWensen(await res.text()) : [];
-      } catch { wishes[p.id] = []; }
-      heroes[i].count = wishes[p.id].length;
-    }));
+        const rows = await rpc('lijsten', { p_kijker: me?.id || null });
+        rows.forEach(r => (wishes[r.eigenaar] ||= []).push({
+          id: r.id, titel: r.titel, prijs: r.prijs || '', link: safeLink(r.link), notitie: r.notitie || '',
+          fav: r.fav, gereserveerd: r.gereserveerd, doorMij: r.door_mij,
+        }));
+      } catch (e) { console.warn('Database niet bereikbaar:', e.message); }
+    } else {
+      await Promise.all(PEOPLE.map(async p => {
+        try {
+          const res = await fetch(`wensen/${p.id}.md`, { cache: 'no-store' });
+          if (res.ok) wishes[p.id] = parseWensen(await res.text());
+        } catch {}
+      }));
+    }
+    PEOPLE.forEach((p, i) => { heroes[i].count = wishes[p.id].length; });
     document.getElementById('totaal').textContent = String(Object.values(wishes).reduce((a, l) => a + l.length, 0)).padStart(2, '0');
   }
 
-  /* ================= Level-scherm ================= */
+  /* ================= Wie ben jij? (één keer kiezen, deze browser onthoudt het) ================= */
+  const whoBtn = document.getElementById('who'), loginEl = document.getElementById('login');
+  const whoPick = document.getElementById('whoPick');
+  function renderWho() { whoBtn.textContent = me ? `IK: ${PEOPLE.find(p => p.id === me.id)?.naam || '?'}` : '▶ WIE BEN JIJ?'; }
+  if (DB) { whoBtn.classList.remove('hidden'); renderWho(); }
+  whoPick.innerHTML = PEOPLE.map(p => `<button type="button" data-id="${p.id}" aria-pressed="false">${p.naam}</button>`).join('');
+  whoPick.addEventListener('click', async e => {
+    const b = e.target.closest('button'); if (!b) return;
+    me = { id: b.dataset.id };
+    try { localStorage.setItem('wensbos-ik', JSON.stringify(me)); } catch {}
+    sfx.coin(); renderWho(); closeLogin(); await afterAuthChange();
+  });
+  function openLogin() {
+    whoPick.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x.dataset.id === me?.id));
+    document.getElementById('logout').classList.toggle('hidden', !me);
+    loginEl.classList.remove('hidden');
+    whoPick.querySelector('button').focus();
+  }
+  function closeLogin() { loginEl.classList.add('hidden'); }
+  whoBtn.addEventListener('click', openLogin);
+  document.getElementById('loginCancel').addEventListener('click', closeLogin);
+  document.getElementById('logout').addEventListener('click', async () => {
+    me = null; try { localStorage.removeItem('wensbos-ik'); } catch {}
+    renderWho(); closeLogin(); await afterAuthChange();
+  });
+  async function afterAuthChange() {
+    await loadAll();
+    if (state === 'level') { const i = PEOPLE.findIndex(p => `#/${p.id}` === location.hash); if (i >= 0) renderLevel(i); }
+  }
+
+  /* ================= Level-scherm (verlanglijstje) ================= */
   const level = document.getElementById('level');
-  const esc = s => s.replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  function itemActions(w, own, canReserve) {
+    const parts = [];
+    if (w.link) parts.push(`<a class="btn go" href="${esc(w.link)}" target="_blank" rel="noopener noreferrer">BEKIJK ▶</a>`);
+    if (own) parts.push(`<button class="btn ghost del" data-del="${esc(w.id)}">✕ WEGHALEN</button>`);
+    if (canReserve) {
+      if (w.doorMij) parts.push(`<button class="btn res mine" data-res="${esc(w.id)}" data-on="0">✓ JIJ REGELT DIT</button>`);
+      else if (w.gereserveerd) parts.push(`<span class="claimed">AL GEREGELD</span>`);
+      else parts.push(`<button class="btn res" data-res="${esc(w.id)}" data-on="1">IK KOOP DIT</button>`);
+    }
+    return parts.length ? `<div class="acts">${parts.join('')}</div>` : '';
+  }
+  function footer(p, own) {
+    if (!DB) {
+      const editUrl = `${REPO}/edit/main/wensen/${p.id}.md`;
+      return `<div class="howto">
+          <strong>CADEAU TOEVOEGEN?</strong>
+          Open je eigen bestand op GitHub en zet er per cadeau een regel bij:<br>
+          <code>- Titel | prijs | link | notitie</code><br>
+          Begin met <code>★</code> als je iets heel graag wilt. Opslaan = binnen een minuutje online.
+          <br><a class="btn" href="${editUrl}" target="_blank" rel="noopener noreferrer">✎ BEWERK ${p.naam}.MD</a>
+        </div>`;
+    }
+    if (own) return `<form class="panel addform" id="addForm">
+          <h2>CADEAU TOEVOEGEN</h2>
+          <label>WAT WIL JE? <input name="titel" required maxlength="120"></label>
+          <label>PRIJS (MAG LEEG) <input name="prijs" maxlength="30" placeholder="€25"></label>
+          <label>LINK (MAG LEEG) <input name="link" type="url" maxlength="500" placeholder="https://…"></label>
+          <label>NOTITIE (MAG LEEG) <input name="notitie" maxlength="200" placeholder="maat, kleur…"></label>
+          <label class="check"><input type="checkbox" name="fav"> ♥ HEEL GRAAG</label>
+          <p class="err" id="addErr"></p>
+          <div class="row"><button class="btn" type="submit">+ OP M'N LIJSTJE</button></div>
+        </form>`;
+    if (!me) return `<div class="howto"><strong>IETS KOPEN?</strong>Tik rechtsboven op WIE BEN JIJ? en kies je naam. Dan zie je wat al geregeld is en kun je zelf iets afvinken.</div>`;
+    return '';
+  }
   function renderLevel(i) {
     const p = PEOPLE[i], list = wishes[p.id] || [];
-    const editUrl = `${REPO}/edit/main/wensen/${p.id}.md`;
+    const own = !!(DB && me && me.id === p.id), canReserve = !!(DB && me && me.id !== p.id);
     level.innerHTML = `
       <div class="wrap">
         <div class="topbar">
           <button class="btn ghost" id="back">◀ TERUG</button>
-          <span class="lvl-world">WERELD 1-${i + 1}</span>
+          ${DB ? `<button class="btn ghost" id="lvlWho">${me ? 'IK: ' + esc(PEOPLE.find(x => x.id === me.id)?.naam || '?') : '▶ WIE BEN JIJ?'}</button>` : `<span class="lvl-world">WERELD 1-${i + 1}</span>`}
         </div>
         <div class="head">
           <canvas width="20" height="33" id="portrait"></canvas>
           <div>
             <h2>${p.naam}</h2>
-            <p>${list.length ? `HEEFT <b>${list.length}</b> ${list.length === 1 ? 'WENS' : 'WENSEN'} IN HET BOS.` : 'HEEFT NOG GEEN WENSEN VERSTOPT.'}<br>
+            <p>${list.length ? `HEEFT <b>${list.length}</b> ${list.length === 1 ? 'CADEAU' : 'CADEAUS'} OP HET VERLANGLIJSTJE.` : 'HET VERLANGLIJSTJE IS NOG LEEG.'}<br>
             ${list.some(w => w.fav) ? '<b>♥</b> = HEEL GRAAG!' : ''}</p>
           </div>
         </div>
         <div class="list">
           ${list.length ? list.map((w, k) => `
-            <article class="wish${w.fav ? ' fav' : ''}" style="animation-delay:${k * 70}ms">
+            <article class="wish${w.fav ? ' fav' : ''}${canReserve && w.gereserveerd && !w.doorMij ? ' taken' : ''}" style="animation-delay:${k * 70}ms">
               <span class="ico" aria-hidden="true">${w.fav ? '♥' : '★'}</span>
               <h3>${esc(w.titel)}</h3>
               <span class="price">${esc(w.prijs)}</span>
               ${w.notitie ? `<p class="note">${esc(w.notitie)}</p>` : ''}
-              ${w.link ? `<a class="btn go" href="${esc(w.link)}" target="_blank" rel="noopener noreferrer">BEKIJK ▶</a>` : ''}
+              ${itemActions(w, own, canReserve)}
             </article>`).join('') : `<div class="empty">HIER GROEIT NOG NIETS...<br>KOM LATER TERUG!</div>`}
         </div>
-        <div class="howto">
-          <strong>WENS TOEVOEGEN?</strong>
-          Open je eigen bestand op GitHub en zet er per wens een regel bij:<br>
-          <code>- Titel | prijs | link | notitie</code><br>
-          Begin met <code>★</code> als je iets heel graag wilt. Opslaan = binnen een minuutje online.
-          <br><a class="btn" href="${editUrl}" target="_blank" rel="noopener noreferrer">✎ BEWERK ${p.naam}.MD</a>
-        </div>
+        ${footer(p, own)}
       </div>`;
     const pc = level.querySelector('#portrait').getContext('2d');
     drawOutlined(pc, p, 2, 3, 1, 0);
     level.querySelector('#back').addEventListener('click', closeLevel);
+    level.querySelector('#lvlWho')?.addEventListener('click', openLogin);
+
+    level.querySelectorAll('[data-res]').forEach(b => b.addEventListener('click', async () => {
+      b.disabled = true;
+      try { await rpc('reserveren', { p_lid: me.id, p_id: b.dataset.res, p_aan: b.dataset.on === '1' }); sfx.coin(); }
+      catch (e) { alert('Dat lukte niet: ' + e.message); }
+      await loadAll(); renderLevel(i);
+    }));
+    level.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => {
+      if (!confirm('Dit cadeau van je lijstje halen?')) return;
+      try { await rpc('cadeau_verwijderen', { p_lid: me.id, p_id: b.dataset.del }); sfx.back(); }
+      catch (e) { alert('Dat lukte niet: ' + e.message); }
+      await loadAll(); renderLevel(i);
+    }));
+    const form = level.querySelector('#addForm');
+    if (form) form.addEventListener('submit', async e => {
+      e.preventDefault();
+      const f = new FormData(form), link = String(f.get('link') || '').trim();
+      if (link && !safeLink(link)) { level.querySelector('#addErr').textContent = 'DE LINK MOET MET https:// BEGINNEN.'; return; }
+      try {
+        await rpc('cadeau_toevoegen', { p_lid: me.id, p_titel: String(f.get('titel')).trim(),
+          p_prijs: String(f.get('prijs') || '').trim(), p_link: link, p_notitie: String(f.get('notitie') || '').trim(), p_fav: f.get('fav') === 'on' });
+        sfx.coin(); await loadAll(); renderLevel(i);
+      } catch (err) { level.querySelector('#addErr').textContent = 'OPSLAAN MISLUKT: ' + err.message.toUpperCase(); }
+    });
   }
 
   let busy = false;
@@ -975,6 +1118,10 @@
 
   titleEl.addEventListener('click', start);
   addEventListener('keydown', e => {
+    if (e.target.closest('input, textarea, select') || !loginEl.classList.contains('hidden')) {
+      if (e.key === 'Escape' && !loginEl.classList.contains('hidden')) closeLogin();
+      return;
+    }
     if (state === 'title' && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); start(); }
     else if (state === 'play' && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
       const n = selected < 0 ? 0 : (selected + (e.key === 'ArrowRight' ? 1 : -1) + heroes.length) % heroes.length;
