@@ -7,8 +7,12 @@ Live: https://studioannema.github.io/wensbos/
 
 ### Met de database (zodra die aan staat)
 
-1. Open de site en tik rechtsboven op **WIE BEN JIJ?**. Kies je naam.
-2. Klik op jezelf in het bos en vul onderaan **CADEAU TOEVOEGEN** in.
+1. Open je eigen link (bijv. `https://studioannema.github.io/wensbos/#/ik/tijme`).
+   De eerste keer verzin je een eigen code; daarna vul je die in als je inlogt.
+2. Je komt meteen op je eigen verlanglijstje: vul onderaan **CADEAU TOEVOEGEN** in.
+
+Persoonlijke links: `#/ik/benno`, `#/ik/tijme`, `#/ik/aletha`, `#/ik/sieb`.
+Code vergeten? In Supabase → SQL Editor: `update public.leden set code_hash = null where id = 'benno';`
 
 ### Zonder database (via GitHub)
 
