@@ -11,3 +11,4 @@
 -->
 
 - ★ MIZU M8 waterfles groen (750 ml) | €24 | https://mizulife.eu/products/m8 | Kleur Leaf, Spring Green of Safari Green — of een customized versie
+- Carhartt WIP Harlem pet, bordeaux/wit | €38,95 | https://www.zalando.nl/carhartt-wip-harlem-unisex-pet-bordeauxwhite-c1454b05w-g12.html | One size
