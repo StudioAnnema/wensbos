@@ -905,7 +905,8 @@
   async function rpc(fn, args = {}) {
     const res = await fetch(`${DB.url}/rest/v1/rpc/${fn}`, {
       method: 'POST',
-      headers: { apikey: DB.anonKey, Authorization: `Bearer ${DB.anonKey}`, 'Content-Type': 'application/json' },
+      // oude anon keys (eyJ…) ook als Bearer; nieuwe publishable keys (sb_publishable_…) alleen als apikey
+      headers: { apikey: DB.anonKey, ...(DB.anonKey.startsWith('eyJ') ? { Authorization: `Bearer ${DB.anonKey}` } : {}), 'Content-Type': 'application/json' },
       body: JSON.stringify(args),
     });
     const text = await res.text();
