@@ -145,7 +145,7 @@
 (() => {
   /* ================= Spelers ================= */
   const PEOPLE = [
-    { id:'benno',  naam:'BENNO',  style:'shag',   chore:true, grin:true,
+    { id:'benno',  naam:'BENNO',  style:'shag',   chore:true, grin:true, head:'benno',
       skin:'#efc0a0', skinD:'#d29c78', hair:'#c98a52', hairH:'#e6b07a', hairD:'#9a6236',
       shirt:'#c9a46c', shirtD:'#a6834f', pants:'#6b4a32', shoes:'vans' },
     { id:'tijme',  naam:'TIJME',  style:'swept',  short:true,
@@ -161,6 +161,27 @@
   const REPO = 'https://github.com/studioannema/wensbos';
   const INK = '#1a1424';
   const SW = 16, SH = 28;
+
+  // Handgetekende hoofden (16 breed, rij 0–14). H/h/d = haar, S/s = huid, E = oog, M = mond, W = tanden
+  const HEADS = {
+    benno: [
+      '......HhhH......',
+      '....HHHhhHHH....',
+      '...HHHHHhHHHHH..',
+      '...HHHHHdHHHHH..',
+      '..HHHHHdSSdHHH..',
+      '..HHHHdSSSSSdH..',
+      '..HHHHSSSSSSSH..',
+      '..HHHdSSdSSdSH..',
+      '..HHHdSSESSESs..',
+      '..HHHdSSSSSSSS..',
+      '..hHHdSSSSSSs...',
+      '..HHHdSsMWWWM...',
+      '...HHdSSSMMMs...',
+      '...dd.SSSSSs....',
+      '......ssss......',
+    ],
+  };
 
   /* ================= Sprites (16×28, chibi, naar rechts kijkend) ================= */
   function drawSprite(g, p, x, y, dir, frame, opts = {}) {
@@ -203,6 +224,13 @@
       if (p.chore) { r(2,19+b,2,1,'#8f6f40'); r(12,19+f,2,1,p.shirtD); }
       r(2,20+b,2,1,p.skinD); r(12,20+f,2,1,p.skin);
       if (!p.chore) r(7,14,3,1,p.skinD);
+    }
+
+    if (p.head) {
+      const pal = { H:p.hair, h:p.hairH, d:p.hairD, S:p.skin, s:p.skinD, E:INK, M:'#8a3434', W:'#ffffff' };
+      HEADS[p.head].forEach((row, ly) => [...row].forEach((ch, lx) => { if (ch !== '.') r(lx, ly, 1, 1, pal[ch]); }));
+      if (p.chore) { r(5,14,2,1,'#7a5532'); r(10,14,2,1,'#7a5532'); }
+      return;
     }
 
     // hoofd
