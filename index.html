@@ -131,7 +131,7 @@
 </section>
 
 <div id="hud" class="hidden">
-  <div class="stat">WERELD <b>1-1</b><br>WENSEN <b id="totaal">--</b></div>
+  <div class="stat">WERELD <b id="wereld">1-1</b><br>WENSEN <b id="totaal">--</b></div>
   <button id="sound" aria-pressed="false">♪ UIT</button>
 </div>
 <div id="heroes"></div>
@@ -269,34 +269,53 @@
     }
     g.fillStyle = '#4a2f1d'; g.fillRect(Math.round(cx) - 1, base, 3, 3);
   }
-  function oak(cx, base, rad) {
+  const GREEN = ['#2f6b39', '#4c9147', '#6cb55a'], SAKURA = ['#d77aa0', '#efa3c0', '#fbd0e0'];
+  function oak(cx, base, rad, pal = GREEN) {
     g.fillStyle = '#5a3a22'; g.fillRect(Math.round(cx) - 1, base - rad, 3, rad + 2);
-    disc(cx, base - rad * 1.6, rad, '#2f6b39');
-    disc(cx - rad * .55, base - rad * 1.25, rad * .7, '#2f6b39');
-    disc(cx + rad * .6, base - rad * 1.3, rad * .75, '#2f6b39');
-    disc(cx - rad * .25, base - rad * 1.85, rad * .55, '#4c9147');
-    disc(cx - rad * .6, base - rad * 1.45, rad * .3, '#6cb55a');
+    disc(cx, base - rad * 1.6, rad, pal[0]);
+    disc(cx - rad * .55, base - rad * 1.25, rad * .7, pal[0]);
+    disc(cx + rad * .6, base - rad * 1.3, rad * .75, pal[0]);
+    disc(cx - rad * .25, base - rad * 1.85, rad * .55, pal[1]);
+    disc(cx - rad * .6, base - rad * 1.45, rad * .3, pal[2]);
   }
   function forEachInView(cam, f, spacing, fn) {
     const start = Math.floor((cam * f - 40) / spacing), end = Math.ceil((cam * f + W + 40) / spacing);
     for (let n = start; n <= end; n++) fn(n, n * spacing + hsh(n) * spacing * 0.6 - cam * f);
   }
 
-  const SKY = ['#3a5596','#4b6aab','#5f80c0','#7896d0','#93acdc','#b2c6e6','#d6dcea','#f2dcb4'];
+  /* ---- Drie werelden: bij elk bezoek een willekeurige (of ?wereld=bos|fuji|strand) ---- */
+  const THEMES = {
+    bos:    { nr: 1, naam: 'BOS',    sky: ['#3a5596','#4b6aab','#5f80c0','#7896d0','#93acdc','#b2c6e6','#d6dcea','#f2dcb4'],
+              bits: ['#e8a33a','#d9652a','#f2c94c','#b8432e'] },
+    fuji:   { nr: 2, naam: 'FUJI',   sky: ['#4a4f8f','#655fa3','#8676b6','#a88cc3','#c9a2c8','#e4b8c6','#f3cbc4','#fadcc6'],
+              bits: ['#fbd0e0','#efa3c0','#ffffff','#f7b8cf'] },
+    strand: { nr: 3, naam: 'STRAND', sky: ['#2f7fc9','#3f8fd3','#55a0dc','#6fb1e3','#8cc2ea','#a9d3f0','#c8e3f5','#e6f1f7'],
+              bits: [] },
+  };
+  const THEME = (() => {
+    const keys = Object.keys(THEMES), q = new URLSearchParams(location.search).get('wereld');
+    if (keys.includes(q)) return q;
+    let last = null; try { last = localStorage.getItem('wensbos-wereld'); } catch {}
+    const pool = keys.filter(k => k !== last), pick = pool[Math.floor(Math.random() * pool.length)];
+    try { localStorage.setItem('wensbos-wereld', pick); } catch {}
+    return pick;
+  })();
+  const TH = THEMES[THEME];
+  const SKY = TH.sky;
   const clouds = Array.from({ length: 6 }, (_, i) => ({ x: hsh(i + 9) * 400, y: 14 + hsh(i + 3) * 40, s: 0.6 + hsh(i) * 0.8 }));
   let leaves = [];
   function spawnLeaves() {
-    const n = matchMedia('(prefers-reduced-motion: reduce)').matches ? 6 : 26;
+    const n = !TH.bits.length ? 0 : matchMedia('(prefers-reduced-motion: reduce)').matches ? 6 : 26;
     leaves = Array.from({ length: n }, () => newLeaf(true));
   }
   function newLeaf(anywhere) {
     return { x: Math.random() * W, y: anywhere ? Math.random() * H : -4, vy: 6 + Math.random() * 8, ph: Math.random() * 6,
-      c: ['#e8a33a','#d9652a','#f2c94c','#b8432e'][Math.floor(Math.random() * 4)] };
+      c: TH.bits[Math.floor(Math.random() * TH.bits.length)] };
   }
 
   /* ---- Fuji (links) ---- */
-  function drawFuji() {
-    const hgt = Math.round(Math.min(groundY * 0.5, W * 0.3)), half = Math.round(hgt * 1.15), fx = Math.round(Math.max(W * 0.2, half * 0.7)), peak = groundY - 10 - hgt;
+  function drawFuji(cxf, size) {
+    const hgt = Math.round(Math.min(groundY * 0.62, W * size)), half = Math.round(hgt * 1.25), fx = Math.round(W * cxf), peak = groundY - 10 - hgt;
     const hm = groundY - 10 - peak;
     for (let x = fx - half; x <= fx + half; x++) {
       const dx = Math.max(0, Math.abs(x - fx) - 3), u = Math.min(1, dx / (half - 3));
@@ -314,19 +333,19 @@
 
   /* ---- Zee, strand, golf en surfers (rechts) ---- */
   function drawSea(t) {
-    const x0 = Math.round(W * 0.55), hz = groundY - 52, beach = groundY - 10, ws = 1.6;
+    const x0 = 0, hz = groundY - 52, beach = groundY - 10, ws = 1.6;
     const rows = ['#8fb4dc', '#6d9ccf', '#4f86c0', '#3d74ad', '#33669c'];
     const bh = Math.ceil((beach - hz) / rows.length);
     rows.forEach((c, i) => { g.fillStyle = c; g.fillRect(0, hz + i * bh, W, bh); });
     // zonneschittering + kleine golfjes
-    for (let i = 0; i < 18; i++) {
+    for (let i = 0; i < 34; i++) {
       const y = hz + 2 + Math.floor(hsh(i + 40) * (beach - hz - 6));
-      const x = x0 + ((hsh(i) * (W - x0) + t * (4 + hsh(i + 2) * 6)) % (W - x0));
+      const x = (hsh(i) * W + t * (4 + hsh(i + 2) * 6)) % W;
       g.fillStyle = Math.abs(x - W * 0.8) < 12 ? '#fff3c4' : '#cfe2f5';
       if ((Math.floor(t * 2 + i) % 3) !== 0) g.fillRect(Math.round(x), y, 2 + (i % 3), 1);
     }
     // de brekende golf
-    const cx = Math.round(W * 0.87 + Math.sin(t * 0.4) * 3), base = beach - 1, wh = Math.round(15 * ws), ww = Math.round(26 * ws);
+    const cx = Math.round(W * 0.72 + Math.sin(t * 0.4) * 3), base = beach - 1, wh = Math.round(15 * ws), ww = Math.round(26 * ws);
     for (let dx = -ww; dx <= ww; dx++) {
       const k = dx < 0 ? Math.exp(-(dx * dx) / (60 * ws * ws)) : Math.exp(-(dx * dx) / (220 * ws * ws));
       const h = Math.round(wh * k);
@@ -353,7 +372,7 @@
     const sx = Math.round(cx + 5 + Math.sin(t * 0.9) * 5), sy = Math.round(base - 15 - Math.sin(t * 0.9) * 3);
     surfer(sx, sy, '#f2c94c', true, t);
     // surfer die terugpeddelt
-    const px = Math.round(W * 0.66 + ((t * 3) % (W * 0.1))), py = beach - 7 + (Math.floor(t * 2) % 2);
+    const px = Math.round(W * 0.3 + ((t * 3) % (W * 0.15))), py = beach - 7 + (Math.floor(t * 2) % 2);
     surfer(px, py, '#e85a4f', false, t);
     // strand
     g.fillStyle = '#d9c38a'; g.fillRect(x0, beach - 1, W - x0, 1);
@@ -388,46 +407,29 @@
     g.fillStyle = '#6b4a2b'; g.fillRect(tx, ty + 1, 2, 2);
   }
 
-  function drawWorld(t, cam) {
-    // lucht in banden
-    const band = Math.ceil(groundY / SKY.length);
-    SKY.forEach((c, i) => { g.fillStyle = c; g.fillRect(0, i * band, W, band + 1); });
-    // zon
-    disc(W * 0.8, groundY * 0.4, 13, '#ffe9b0'); disc(W * 0.8, groundY * 0.4, 10, '#fff6d6');
-    // wolken
-    clouds.forEach(c => {
-      const x = ((c.x + t * 4 * c.s - cam * 0.05) % (W + 80) + W + 80) % (W + 80) - 40, y = c.y * (groundY / 120);
-      disc(x, y + 2, 7 * c.s, '#d7e1f2'); disc(x + 9 * c.s, y, 9 * c.s, '#ffffff');
-      disc(x - 8 * c.s, y + 3, 6 * c.s, '#ffffff'); disc(x + 18 * c.s, y + 3, 6 * c.s, '#eef3fb');
-      g.fillStyle = '#ffffff'; g.fillRect(x - 12 * c.s, y + 4, 34 * c.s, 4 * c.s);
-    });
-    drawSea(t);
-    drawFuji();
-    // verre heuvels (lopen links van de zee af)
-    g.fillStyle = '#7e98c4';
-    for (let x = 0; x < W; x++) {
-      const wx = x + cam * 0.12, k = Math.max(0, Math.min(1, (W * 0.64 - x) / (W * 0.1)));
-      const h = (30 + Math.sin(wx * 0.021) * 10 + Math.sin(wx * 0.053) * 5) * k;
-      if (h > 0) g.fillRect(x, groundY - h - 16 * k, 1, h + 16 * k);
+  function torii(x, base) {
+    g.fillStyle = '#c8372d';
+    g.fillRect(x - 9, base - 22, 18, 2); g.fillRect(x - 7, base - 18, 14, 2);
+    g.fillRect(x - 6, base - 20, 2, 20); g.fillRect(x + 4, base - 20, 2, 20);
+    g.fillStyle = '#2a1a1e'; g.fillRect(x - 10, base - 23, 20, 1);
+    g.fillStyle = '#8e231c'; g.fillRect(x - 6, base - 3, 2, 3); g.fillRect(x + 4, base - 3, 2, 3);
+  }
+  function gulls(t) {
+    for (let i = 0; i < 3; i++) {
+      const x = ((hsh(i + 70) * W + t * (8 + i * 3)) % (W + 20)) - 10, y = groundY * (0.25 + hsh(i + 71) * 0.2) + Math.sin(t * 2 + i) * 2;
+      const f = Math.floor(t * 4 + i) % 2;
+      g.fillStyle = '#ffffff'; g.fillRect(Math.round(x) - 2, Math.round(y) - f, 2, 1); g.fillRect(Math.round(x) + 1, Math.round(y) - f, 2, 1);
+      g.fillStyle = '#3a4a66'; g.fillRect(Math.round(x), Math.round(y), 1, 1);
     }
-    // verre dennen
-    const bos = x => x < W * 0.6;
-    forEachInView(cam, 0.28, 9, (n, x) => { if (bos(x)) pine(x, groundY - 8, 16 + Math.floor(hsh(n) * 12), '#3f6a6a', '#5a8a84'); });
-    g.fillStyle = '#3f6a6a'; g.fillRect(0, groundY - 8, Math.round(W * 0.6), 8);
-    // middenlaag: eiken en dennen door elkaar
-    forEachInView(cam, 0.55, 26, (n, x) => {
-      if (!bos(x - 6)) return;
-      if (hsh(n + 50) > 0.5) oak(x, groundY - 2, 9 + Math.floor(hsh(n + 7) * 5));
-      else pine(x, groundY - 2, 30 + Math.floor(hsh(n + 3) * 14), '#25553a', '#3f7d4c');
-    });
-    // struiken
-    forEachInView(cam, 0.85, 34, (n, x) => {
-      if (!bos(x - 10)) return;
-      const r = 6 + Math.floor(hsh(n + 21) * 5);
-      disc(x, groundY - 1, r, '#3f8a3a'); disc(x + r, groundY, r * .8, '#3f8a3a');
-      disc(x - 2, groundY - r * .6, r * .5, '#5aa94c');
-    });
-    // grond
+  }
+  function hills(cam, col, base, amp) {
+    g.fillStyle = col;
+    for (let x = 0; x < W; x++) {
+      const wx = x + cam * 0.12, h = base + Math.sin(wx * 0.021) * amp + Math.sin(wx * 0.053) * amp / 2;
+      g.fillRect(x, groundY - h - 16, 1, h + 16);
+    }
+  }
+  function grassGround(cam, flowers) {
     g.fillStyle = '#8b5a34'; g.fillRect(0, groundY, W, H - groundY);
     g.fillStyle = '#74c74f'; g.fillRect(0, groundY, W, 3);
     g.fillStyle = '#4f9e3a'; g.fillRect(0, groundY + 3, W, 1);
@@ -435,26 +437,85 @@
     for (let x = -8; x < W + 8; x += 8) {
       const n = Math.floor((x + cam) / 8);
       g.fillStyle = '#74c74f'; g.fillRect(x - off + 2, groundY - 1, 1, 1); g.fillRect(x - off + 5, groundY - 1, 1, 1);
-      if (hsh(n) > 0.82) { g.fillStyle = hsh(n + 1) > 0.5 ? '#f2c94c' : '#e85a4f'; g.fillRect(x - off + 3, groundY - 2, 1, 1); }
+      if (hsh(n) > 0.82) { g.fillStyle = flowers[hsh(n + 1) > 0.5 ? 0 : 1]; g.fillRect(x - off + 3, groundY - 2, 1, 1); }
       for (let row = groundY + 6; row < H; row += 6) {
         const m = n * 31 + row;
         if (hsh(m) > 0.55) { g.fillStyle = '#6e4527'; g.fillRect(x - off + Math.floor(hsh(m + 2) * 6), row, 2, 2); }
         if (hsh(m + 5) > 0.9) { g.fillStyle = '#a7774a'; g.fillRect(x - off + Math.floor(hsh(m + 3) * 6), row + 3, 1, 1); }
       }
     }
-    // rechts loopt het bos over in strandzand
-    const sx = Math.round(W * 0.7);
-    g.fillStyle = '#ecd9a2'; g.fillRect(sx, groundY, W - sx, 4);
-    g.fillStyle = '#d9c38a'; g.fillRect(sx, groundY + 4, W - sx, H - groundY - 4);
-    // schuine, getrapte overgang van gras/aarde naar zand
-    for (let y = groundY; y < H; y++) {
-      const w = Math.max(0, 6 - Math.floor((y - groundY) / 2));
-      g.fillStyle = y < groundY + 4 ? '#ecd9a2' : '#d9c38a'; g.fillRect(sx - w, y, w, 1);
+  }
+  function sandGround(cam) {
+    g.fillStyle = '#ecd9a2'; g.fillRect(0, groundY, W, 4);
+    g.fillStyle = '#d9c38a'; g.fillRect(0, groundY + 4, W, H - groundY - 4);
+    const off = cam % 4;
+    for (let x = -4; x < W + 4; x += 4) for (let y = groundY + 6; y < H; y += 5) {
+      const n = Math.floor((x + cam) / 4) * 13 + y;
+      if (hsh(n) > .7) { g.fillStyle = '#c4ab72'; g.fillRect(x - off + Math.floor(hsh(y) * 3), y, 1, 1); }
     }
-    g.fillStyle = '#74c74f'; g.fillRect(sx - 8, groundY - 1, 2, 1);
-    for (let x = sx; x < W; x += 4) for (let y = groundY + 6; y < H; y += 5)
-      if (hsh(x * 13 + y) > .7) { g.fillStyle = '#c4ab72'; g.fillRect(x + Math.floor(hsh(y) * 3), y, 1, 1); }
-    palm(Math.round(W * 0.67), groundY);
+    forEachInView(cam, 1, 60, (n, x) => {
+      if (hsh(n + 90) > 0.6) { g.fillStyle = '#f6efe0'; g.fillRect(Math.round(x), groundY + 1, 2, 1); }
+    });
+  }
+
+  function drawWorld(t, cam) {
+    // lucht in banden
+    const band = Math.ceil(groundY / SKY.length);
+    SKY.forEach((c, i) => { g.fillStyle = c; g.fillRect(0, i * band, W, band + 1); });
+    // zon
+    if (THEME === 'fuji') { disc(W * 0.78, groundY * 0.3, 14, '#e2574c'); disc(W * 0.78, groundY * 0.3, 12, '#ee6a5a'); }
+    else { disc(W * 0.8, groundY * 0.32, 13, '#ffe9b0'); disc(W * 0.8, groundY * 0.32, 10, '#fff6d6'); }
+    // wolken
+    const cw = THEME === 'fuji' ? ['#f3d6dc', '#fff1f0', '#fbe6e8'] : ['#d7e1f2', '#ffffff', '#eef3fb'];
+    clouds.forEach(c => {
+      const x = ((c.x + t * 4 * c.s - cam * 0.05) % (W + 80) + W + 80) % (W + 80) - 40, y = c.y * (groundY / 120);
+      disc(x, y + 2, 7 * c.s, cw[0]); disc(x + 9 * c.s, y, 9 * c.s, cw[1]);
+      disc(x - 8 * c.s, y + 3, 6 * c.s, cw[1]); disc(x + 18 * c.s, y + 3, 6 * c.s, cw[2]);
+      g.fillStyle = cw[1]; g.fillRect(x - 12 * c.s, y + 4, 34 * c.s, 4 * c.s);
+    });
+
+    if (THEME === 'bos') {
+      hills(cam, '#7e98c4', 30, 10);
+      forEachInView(cam, 0.28, 9, (n, x) => pine(x, groundY - 8, 16 + Math.floor(hsh(n) * 12), '#3f6a6a', '#5a8a84'));
+      g.fillStyle = '#3f6a6a'; g.fillRect(0, groundY - 8, W, 8);
+      forEachInView(cam, 0.55, 26, (n, x) => {
+        if (hsh(n + 50) > 0.5) oak(x, groundY - 2, 9 + Math.floor(hsh(n + 7) * 5));
+        else pine(x, groundY - 2, 30 + Math.floor(hsh(n + 3) * 14), '#25553a', '#3f7d4c');
+      });
+      forEachInView(cam, 0.85, 34, (n, x) => {
+        const r = 6 + Math.floor(hsh(n + 21) * 5);
+        disc(x, groundY - 1, r, '#3f8a3a'); disc(x + r, groundY, r * .8, '#3f8a3a');
+        disc(x - 2, groundY - r * .6, r * .5, '#5aa94c');
+      });
+      grassGround(cam, ['#f2c94c', '#e85a4f']);
+    } else if (THEME === 'fuji') {
+      drawFuji(0.42, 0.42);
+      hills(cam, '#8c86b8', 14, 6);
+      forEachInView(cam, 0.28, 12, (n, x) => pine(x, groundY - 8, 10 + Math.floor(hsh(n) * 8), '#5a5f8f', '#7377a6'));
+      g.fillStyle = '#5a5f8f'; g.fillRect(0, groundY - 8, W, 8);
+      torii(Math.round(W * 0.12), groundY - 1);
+      forEachInView(cam, 0.55, 40, (n, x) => {
+        if (Math.abs(x - W * 0.12) < 18) return;
+        if (hsh(n + 50) > 0.35) oak(x, groundY - 2, 8 + Math.floor(hsh(n + 7) * 5), SAKURA);
+      });
+      forEachInView(cam, 0.85, 46, (n, x) => {
+        const r = 5 + Math.floor(hsh(n + 21) * 4);
+        disc(x, groundY - 1, r, '#3f8a3a'); disc(x + r, groundY, r * .8, '#3f8a3a');
+        disc(x - 2, groundY - r * .6, r * .4, '#efa3c0');
+      });
+      grassGround(cam, ['#fbd0e0', '#ffffff']);
+    } else {
+      // verre eilandjes aan de horizon, dan de zee met golf en surfers
+      g.fillStyle = '#7fa6cf';
+      for (let x = 0; x < W * 0.4; x++) {
+        const h = Math.max(0, Math.round(Math.sin((x - W * 0.08) * 0.05) * 7 + 1));
+        if (h) g.fillRect(x, groundY - 52 - h, 1, h);
+      }
+      drawSea(t);
+      gulls(t);
+      sandGround(cam);
+      forEachInView(cam, 1, 90, (n, x) => { if (hsh(n + 33) > 0.35) palm(Math.round(x), groundY); });
+    }
   }
 
   /* ================= Helden ================= */
@@ -722,6 +783,7 @@
     requestAnimationFrame(frame);
   }
 
+  document.getElementById('wereld').textContent = `1-${TH.nr} ${TH.naam}`;
   resize(); spawnLeaves();
   const loaded = loadAll();
   // direct naar een lijst via #/naam (deelbare link)
