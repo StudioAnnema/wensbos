@@ -1114,17 +1114,13 @@
     document.body.appendChild(d); d.addEventListener('animationend', () => d.remove());
   }
   const GRAP_VRAGEN = [
-    ['WIL PRECIES', 'WELKE AUTO DAN PRECIES? (MERK + TYPE)'],
+    ['MERK', 'WELK MERK?'],
     ['KLEUR', 'IN WELKE KLEUR?'],
     ['RIJDT OP', 'BENZINE, DIESEL OF ELEKTRISCH?'],
-    ['NAAM', 'HOE GA JE HEM NOEMEN?'],
     ['EERSTE RIT', 'WAAR RIJD JE ALS EERSTE NAARTOE?'],
-    ['EERSTE NUMMER', 'WELK NUMMER GAAT ER ALS EERSTE AAN?'],
-    ['BIJRIJDER', 'WIE MAG ER ALS EERSTE NAAST JE ZITTEN?'],
-    ['NUMMERBORD', 'WELK NUMMERBORD WIL JE?'],
-    ['VELGEN', 'WELKE VELGEN?'],
     ['EXTRA', 'WAT MOET ER NOG MEER OP?'],
   ];
+
   // Verplichte vraag: pas weg als er iets is ingevuld. Het antwoord gaat (met Benno's eigen code) in de notitie.
   function grapVraag(i, w, [label, vraag]) {
     const m = document.createElement('div');
