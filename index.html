@@ -111,7 +111,7 @@
     box-shadow:0 0 0 3px var(--ink),inset -3px -3px 0 var(--gold-d)}
   .modal{position:fixed;inset:0;z-index:60;background:rgba(10,8,20,.75);display:grid;place-items:center;padding:16px}
   .panel{background:var(--panel);padding:22px;width:min(420px,100%);box-shadow:0 0 0 4px var(--ink),0 0 0 8px var(--paper),0 0 0 12px var(--ink)}
-  .panel h2{font-size:14px;color:var(--gold);font-weight:normal;margin-bottom:16px;text-shadow:2px 2px var(--ink)}
+  .panel h2{font-size:14px;line-height:1.6;color:var(--gold);font-weight:normal;margin-bottom:16px;text-shadow:2px 2px var(--ink)}
   .panel label{display:block;font-size:9px;color:var(--muted);margin:12px 0 6px;line-height:1.8}
   .panel input,.panel textarea{display:block;width:100%;margin-top:6px;font-family:inherit;font-size:11px;padding:10px;border:0;
     background:var(--paper);color:var(--ink);box-shadow:inset 3px 3px 0 #d8ccb0}
@@ -1072,9 +1072,11 @@
   }
   /* ================= GRAP: Benno's auto wil niet van zijn lijstje =================
      Uitzetten: zet AUTO_GRAP hieronder op false. Helemaal weghalen: dit blok, de CSS met "GRAP auto"
-     en de twee regels met "isGrapAuto" in renderLevel. Werkt alleen op Benno's eigen scherm en
-     verandert niets in de database. */
+     en de twee regels met "isGrapAuto" in renderLevel.
+     Benno mag de auto pas echt weghalen als AUTO_MAG_WEG op true staat.
+     Bij elke poging moet hij een vraag over de auto beantwoorden; dat antwoord komt in de notitie. */
   const AUTO_GRAP = true;
+  const AUTO_MAG_WEG = false;
   const isGrapAuto = (p, w) => AUTO_GRAP && p.id === 'benno' && me?.id === 'benno' && /\bauto\b|\bcar\b|wagen/i.test(w.titel);
   let grapLvl = 0;
   try { grapLvl = +localStorage.getItem('wensbos-autograp') || 0; } catch {}
@@ -1111,19 +1113,53 @@
     const d = document.createElement('div'); d.className = 'grap-toast'; d.textContent = t;
     document.body.appendChild(d); d.addEventListener('animationend', () => d.remove());
   }
+  const GRAP_VRAGEN = [
+    ['WIL PRECIES', 'WELKE AUTO DAN PRECIES? (MERK + TYPE)'],
+    ['KLEUR', 'IN WELKE KLEUR?'],
+    ['RIJDT OP', 'BENZINE, DIESEL OF ELEKTRISCH?'],
+    ['NAAM', 'HOE GA JE HEM NOEMEN?'],
+    ['EERSTE RIT', 'WAAR RIJD JE ALS EERSTE NAARTOE?'],
+    ['EERSTE NUMMER', 'WELK NUMMER GAAT ER ALS EERSTE AAN?'],
+    ['BIJRIJDER', 'WIE MAG ER ALS EERSTE NAAST JE ZITTEN?'],
+    ['NUMMERBORD', 'WELK NUMMERBORD WIL JE?'],
+    ['VELGEN', 'WELKE VELGEN?'],
+    ['EXTRA', 'WAT MOET ER NOG MEER OP?'],
+  ];
+  // Verplichte vraag: pas weg als er iets is ingevuld. Het antwoord gaat (met Benno's eigen code) in de notitie.
+  function grapVraag(i, w, [label, vraag]) {
+    const m = document.createElement('div');
+    m.className = 'modal';
+    m.innerHTML = `<form class="panel"><h2>${vraag}</h2>
+        <label>JE ANTWOORD <input required maxlength="60" autocomplete="off"></label>
+        <p class="err"></p>
+        <div class="row"><button class="btn" type="submit">✓ NOTEER MAAR</button></div></form>`;
+    document.body.appendChild(m);
+    const f = m.querySelector('form'), inp = m.querySelector('input');
+    inp.focus();
+    f.addEventListener('submit', async e => {
+      e.preventDefault();
+      const ans = inp.value.trim();
+      if (!ans) { m.querySelector('.err').textContent = 'JE MOET WEL IETS INVULLEN.'; return; }
+      const notitie = [w.notitie, `${label}: ${ans}`].filter(Boolean).join(' · ').slice(0, 200);
+      try {
+        await rpc('cadeau_bijwerken', { p_lid: me.id, p_code: me.code, p_id: w.id, p_titel: w.titel, p_prijs: w.prijs,
+          p_link: w.link, p_notitie: notitie, p_fav: w.fav });
+      } catch {}
+      m.remove(); sfx.coin(); grapToast('GENOTEERD! NU WETEN WE HET ZEKER.');
+      await loadAll(); renderLevel(i, true);
+    });
+  }
   // true = we hebben het weghalen tegengehouden
-  function grapWeghalen(i, id) {
-    if (grapLvl >= 8) {
-      if (!confirm('OKÉ OKÉ... ECHT WEG? 🥲')) return true;
-      grapLvl = 0; try { localStorage.removeItem('wensbos-autograp'); } catch {}
-      return false;
-    }
+  function grapWeghalen(i, w) {
+    if (AUTO_MAG_WEG) return false;
     grapLvl++; try { localStorage.setItem('wensbos-autograp', grapLvl); } catch {}
     sfx.tone(330, .12); sfx.tone(262, .2, .14);
     grapToast(GRAP_ROEP[(grapLvl - 1) % GRAP_ROEP.length]);
     grapCars(Math.min(1 + grapLvl, 8));
     renderLevel(i, true);
-    level.querySelector(`[data-del="${id}"]`)?.closest('.wish')?.classList.add('grap-shake');
+    level.querySelector(`[data-del="${w.id}"]`)?.closest('.wish')?.classList.add('grap-shake');
+    const vraag = GRAP_VRAGEN[grapLvl - 1];
+    if (vraag) setTimeout(() => grapVraag(i, w, vraag), 1100);
     return true;
   }
   /* ================= einde GRAP ================= */
@@ -1167,7 +1203,7 @@
 
     level.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => {
       const gw = list.find(x => x.id === b.dataset.del);
-      if (gw && isGrapAuto(p, gw) && grapWeghalen(i, gw.id)) return;
+      if (gw && isGrapAuto(p, gw) && grapWeghalen(i, gw)) return;
       if (!confirm('Dit cadeau van je lijstje halen?')) return;
       try { await rpc('cadeau_verwijderen', { p_lid: me.id, p_code: me.code, p_id: b.dataset.del }); sfx.back(); }
       catch (e) { alert('Dat lukte niet: ' + e.message); }
