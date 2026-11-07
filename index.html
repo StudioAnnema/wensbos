@@ -127,6 +127,15 @@
   .btn.del{font-size:9px;padding:8px 10px}
   .addform{margin-bottom:0}
   .quiet .wish{animation:none}
+  /* GRAP auto — mag weg samen met het GRAP-blok in het script */
+  .grapcar{position:fixed;left:-140px;z-index:55;pointer-events:none;width:120px;height:60px;image-rendering:pixelated;
+    animation:grapdrive var(--d,3s) linear forwards}
+  @keyframes grapdrive{to{transform:translateX(calc(100vw + 300px))}}
+  .grap-toast{position:fixed;left:50%;bottom:24px;z-index:56;background:var(--gold);color:var(--ink);font-size:11px;line-height:1.7;
+    padding:12px 14px;max-width:90vw;text-align:center;box-shadow:0 0 0 3px var(--ink);animation:graptoast 3s steps(8) forwards}
+  @keyframes graptoast{0%{opacity:0;transform:translate(-50%,10px)}10%,85%{opacity:1;transform:translate(-50%,0)}100%{opacity:0;transform:translate(-50%,0)}}
+  .wish.grap-shake{animation:grapshake .45s steps(6)}
+  @keyframes grapshake{25%{transform:translateX(-6px)}50%{transform:translateX(6px)}75%{transform:translateX(-4px)}}
   .wish.editing{display:block}
   .editform label{display:block;font-size:9px;color:#5b5470;margin:10px 0 4px;line-height:1.7}
   .editform label:first-child{margin-top:0}
@@ -1061,6 +1070,64 @@
     return { p_titel: String(f.get('titel')).trim(), p_prijs: String(f.get('prijs') || '').trim(), p_link: link,
              p_notitie: String(f.get('notitie') || '').trim(), p_fav: f.get('fav') === 'on' };
   }
+  /* ================= GRAP: Benno's auto wil niet van zijn lijstje =================
+     Uitzetten: zet AUTO_GRAP hieronder op false. Helemaal weghalen: dit blok, de CSS met "GRAP auto"
+     en de twee regels met "isGrapAuto" in renderLevel. Werkt alleen op Benno's eigen scherm en
+     verandert niets in de database. */
+  const AUTO_GRAP = true;
+  const isGrapAuto = (p, w) => AUTO_GRAP && p.id === 'benno' && me?.id === 'benno' && /\bauto\b|\bcar\b|wagen/i.test(w.titel);
+  let grapLvl = 0;
+  try { grapLvl = +localStorage.getItem('wensbos-autograp') || 0; } catch {}
+  const GRAP_ROEP = ['WEGHALEN? DAT MEEN JE NIET.', 'NEE HOOR, DIE WIL JE ECHT.', 'VROEM VROEM! HIJ BLIJFT STAAN.',
+    'DE AUTO WEIGERT TE VERTREKKEN.', 'TOET TOET! NOG STEEDS HIER.', 'HIJ STAAT AL IN DE GARAGE VAN JE HART.',
+    'JE KUNT NIET STOPPEN MET WILLEN.', 'BIJNA... NEE TOCH NIET.'];
+  const GRAP_NOTITIE = ['BENNO DROOMT ER ELKE NACHT VAN.', 'OEFENT AL MET TOETEREN.', 'HEEFT AL EEN SLEUTELHANGER GEKOCHT.',
+    'NOEMT ZIJN FIETS AL "DE OUDE".', 'ZEGT "VROEM" ALS HIJ DE TRAP OPLOOPT.', 'HEEFT EEN PARKEERPLEK GERESERVEERD.',
+    'KLEUR MAAKT NIET UIT, ALS HET MAAR EEN AUTO IS.', 'HEEFT HET ROUTEPLANNER-GELUIDJE AL INGESTELD.'];
+  function grapView(w) {
+    if (!grapLvl) return w;
+    return { ...w, fav: true, titel: w.titel + ' ' + '!'.repeat(Math.min(grapLvl, 8)),
+      prijs: grapLvl >= 3 ? 'MAAKT NIET UIT' : w.prijs,
+      notitie: [w.notitie, ...GRAP_NOTITIE.slice(0, grapLvl)].filter(Boolean).join(' · ') };
+  }
+  function grapCars(n) {
+    for (let k = 0; k < n; k++) {
+      const c = document.createElement('canvas'); c.width = 24; c.height = 12; c.className = 'grapcar';
+      const g2 = c.getContext('2d'), col = ['#e04b3a', '#2e6fa8', '#ffd23f', '#74c74f', '#e8e8e8'][k % 5];
+      const R = (x, y, w, h, f) => { g2.fillStyle = f; g2.fillRect(x, y, w, h); };
+      R(1, 4, 22, 6, INK); R(5, 0, 13, 5, INK);
+      R(2, 5, 20, 4, col); R(6, 1, 11, 4, col); R(7, 2, 4, 2, '#9fd3ff'); R(12, 2, 4, 2, '#9fd3ff');
+      R(21, 6, 1, 1, '#fff6a0'); R(2, 6, 1, 1, '#ff6a5a');
+      R(4, 8, 4, 4, INK); R(16, 8, 4, 4, INK); R(5, 9, 2, 2, '#bbb'); R(17, 9, 2, 2, '#bbb');
+      c.style.top = (12 + Math.random() * 70) + 'vh';
+      c.style.setProperty('--d', (1.8 + Math.random() * 1.8) + 's');
+      c.style.animationDelay = (k * 0.25) + 's';
+      document.body.appendChild(c);
+      c.addEventListener('animationend', () => c.remove());
+    }
+  }
+  function grapToast(t) {
+    document.querySelectorAll('.grap-toast').forEach(x => x.remove());
+    const d = document.createElement('div'); d.className = 'grap-toast'; d.textContent = t;
+    document.body.appendChild(d); d.addEventListener('animationend', () => d.remove());
+  }
+  // true = we hebben het weghalen tegengehouden
+  function grapWeghalen(i, id) {
+    if (grapLvl >= 8) {
+      if (!confirm('OKÉ OKÉ... ECHT WEG? 🥲')) return true;
+      grapLvl = 0; try { localStorage.removeItem('wensbos-autograp'); } catch {}
+      return false;
+    }
+    grapLvl++; try { localStorage.setItem('wensbos-autograp', grapLvl); } catch {}
+    sfx.tone(330, .12); sfx.tone(262, .2, .14);
+    grapToast(GRAP_ROEP[(grapLvl - 1) % GRAP_ROEP.length]);
+    grapCars(Math.min(1 + grapLvl, 8));
+    renderLevel(i, true);
+    level.querySelector(`[data-del="${id}"]`)?.closest('.wish')?.classList.add('grap-shake');
+    return true;
+  }
+  /* ================= einde GRAP ================= */
+
   // quiet = na opslaan/weghalen: geen inplop-animatie en op dezelfde plek blijven staan
   function renderLevel(i, quiet = false) {
     const p = PEOPLE[i], list = wishes[p.id] || [];
@@ -1081,14 +1148,14 @@
           </div>
         </div>
         <div class="list">
-          ${list.length ? list.map((w, k) => `
+          ${list.length ? list.map((w0, k) => { const w = isGrapAuto(p, w0) ? grapView(w0) : w0; return `
             <article class="wish${w.fav ? ' fav' : ''}" style="animation-delay:${k * 70}ms">
               <span class="ico" aria-hidden="true">${w.fav ? '♥' : '★'}</span>
               <h3>${esc(w.titel)}</h3>
               <span class="price">${esc(w.prijs)}</span>
               ${w.notitie ? `<p class="note">${esc(w.notitie)}</p>` : ''}
               ${itemActions(w, own)}
-            </article>`).join('') : `<div class="empty">HIER GROEIT NOG NIETS...<br>KOM LATER TERUG!</div>`}
+            </article>`; }).join('') : `<div class="empty">HIER GROEIT NOG NIETS...<br>KOM LATER TERUG!</div>`}
         </div>
         ${footer(p, own)}
       </div>`;
@@ -1099,6 +1166,8 @@
     level.querySelector('#lvlWho')?.addEventListener('click', () => openLogin());
 
     level.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => {
+      const gw = list.find(x => x.id === b.dataset.del);
+      if (gw && isGrapAuto(p, gw) && grapWeghalen(i, gw.id)) return;
       if (!confirm('Dit cadeau van je lijstje halen?')) return;
       try { await rpc('cadeau_verwijderen', { p_lid: me.id, p_code: me.code, p_id: b.dataset.del }); sfx.back(); }
       catch (e) { alert('Dat lukte niet: ' + e.message); }
