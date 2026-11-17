@@ -127,6 +127,10 @@
   .btn.del{font-size:9px;padding:8px 10px}
   .addform{margin-bottom:0}
   .quiet .wish{animation:none}
+  .btn.res{background:var(--leaf);box-shadow:0 0 0 3px var(--ink),inset -3px -3px 0 var(--leaf-d)}
+  .btn.res.mine{background:#9fd3ff;box-shadow:0 0 0 3px var(--ink),inset -3px -3px 0 #5a9ad0}
+  .claimed{font-size:9px;color:#fff;background:#7a6f8f;padding:8px 9px 7px;box-shadow:0 0 0 3px var(--ink)}
+  .wish.taken{opacity:.7}
   /* GRAP auto — mag weg samen met het GRAP-blok in het script */
   .grapcar{position:fixed;left:-140px;z-index:55;pointer-events:none;width:120px;height:60px;image-rendering:pixelated;
     animation:grapdrive var(--d,3s) linear forwards}
@@ -954,10 +958,10 @@
     PEOPLE.forEach(p => { wishes[p.id] = []; });
     if (DB) {
       try {
-        const rows = await rpc('lijsten', { p_kijker: me?.id || null });
+        const rows = await rpc('lijsten', { p_kijker: me?.id || null, p_code: me?.code || null });
         rows.forEach(r => (wishes[r.eigenaar] ||= []).push({
           id: r.id, titel: r.titel, prijs: r.prijs || '', link: safeLink(r.link), notitie: r.notitie || '',
-          fav: r.fav,
+          fav: r.fav, geregeld: r.gereserveerd, doorMij: r.door_mij,
         }));
       } catch (e) { console.warn('Database niet bereikbaar:', e.message); }
     } else {
@@ -1033,11 +1037,17 @@
   /* ================= Level-scherm (verlanglijstje) ================= */
   const level = document.getElementById('level');
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
-  function itemActions(w, own) {
+  function itemActions(w, own, canBuy) {
     const parts = [];
     if (w.link) parts.push(`<a class="btn go" href="${esc(w.link)}" target="_blank" rel="noopener noreferrer">BEKIJK ▶</a>`);
     if (own) parts.push(`<button class="btn ghost del" data-edit="${esc(w.id)}">BEWERKEN</button>`,
                         `<button class="btn ghost del" data-del="${esc(w.id)}">✕ WEGHALEN</button>`);
+    // Anoniem afvinken: anderen zien alleen AL GEREGELD, nooit door wie. De eigenaar ziet niets.
+    if (canBuy) {
+      if (w.doorMij) parts.push(`<button class="btn res mine" data-res="${esc(w.id)}" data-on="0">✓ JIJ REGELT DIT</button>`);
+      else if (w.geregeld) parts.push(`<span class="claimed">AL GEREGELD</span>`);
+      else parts.push(`<button class="btn res" data-res="${esc(w.id)}" data-on="1">IK KOOP DIT</button>`);
+    }
     return parts.length ? `<div class="acts">${parts.join('')}</div>` : '';
   }
   function footer(p, own) {
@@ -1061,6 +1071,7 @@
           <p class="err" id="addErr"></p>
           <div class="row"><button class="btn" type="submit">+ OP M'N LIJSTJE</button></div>
         </form>`;
+    if (!me) return `<div class="howto"><strong>IETS KOPEN?</strong>Log rechtsboven in via WIE BEN JIJ?. Dan zie je wat al geregeld is en kun je zelf iets afvinken. Niemand ziet wie wat koopt.</div>`;
     return '';
   }
   // Velden uit het toevoeg- of bewerkformulier halen en controleren.
@@ -1163,7 +1174,7 @@
   // quiet = na opslaan/weghalen: geen inplop-animatie en op dezelfde plek blijven staan
   function renderLevel(i, quiet = false) {
     const p = PEOPLE[i], list = wishes[p.id] || [];
-    const own = !!(DB && me && me.id === p.id);
+    const own = !!(DB && me && me.id === p.id), canBuy = !!(DB && me && me.id !== p.id);
     const keep = level.scrollTop;
     level.innerHTML = `
       <div class="wrap${quiet ? ' quiet' : ''}">
@@ -1181,12 +1192,12 @@
         </div>
         <div class="list">
           ${list.length ? list.map((w0, k) => { const w = isGrapAuto(p, w0) ? grapView(w0) : w0; return `
-            <article class="wish${w.fav ? ' fav' : ''}" style="animation-delay:${k * 70}ms">
+            <article class="wish${w.fav ? ' fav' : ''}${canBuy && w.geregeld && !w.doorMij ? ' taken' : ''}" style="animation-delay:${k * 70}ms">
               <span class="ico" aria-hidden="true">${w.fav ? '♥' : '★'}</span>
               <h3>${esc(w.titel)}</h3>
               <span class="price">${esc(w.prijs)}</span>
               ${w.notitie ? `<p class="note">${esc(w.notitie)}</p>` : ''}
-              ${itemActions(w, own)}
+              ${itemActions(w, own, canBuy)}
             </article>`; }).join('') : `<div class="empty">HIER GROEIT NOG NIETS...<br>KOM LATER TERUG!</div>`}
         </div>
         ${footer(p, own)}
@@ -1197,6 +1208,12 @@
     level.querySelector('#back').addEventListener('click', closeLevel);
     level.querySelector('#lvlWho')?.addEventListener('click', () => openLogin());
 
+    level.querySelectorAll('[data-res]').forEach(b => b.addEventListener('click', async () => {
+      b.disabled = true;
+      try { await rpc('reserveren', { p_lid: me.id, p_code: me.code, p_id: b.dataset.res, p_aan: b.dataset.on === '1' }); sfx.coin(); }
+      catch (e) { alert(/regelt dit al/i.test(e.message) ? 'Iemand anders regelt dit al!' : 'Dat lukte niet: ' + e.message); }
+      await loadAll(); renderLevel(i, true);
+    }));
     level.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => {
       const gw = list.find(x => x.id === b.dataset.del);
       if (gw && isGrapAuto(p, gw) && grapWeghalen(i, gw)) return;

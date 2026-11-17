@@ -25,7 +25,7 @@ create table if not exists public.cadeaus (
   gemaakt_op        timestamptz not null default now()
 );
 
--- Wie wat koopt (wordt nu niet gebruikt op de site, maar blijft geheim als het ooit terugkomt).
+-- Wie wat koopt. Anderen zien alleen DAT het geregeld is, nooit door wie; de eigenaar ziet niets.
 create table if not exists public.afgevinkt (
   cadeau uuid not null references public.cadeaus(id) on delete cascade,
   lid    text not null references public.leden(id) on delete cascade,
@@ -44,17 +44,25 @@ drop function if exists public.cadeau_toevoegen(text, text, text, text, text, bo
 drop function if exists public.cadeau_verwijderen(text, uuid);
 drop function if exists public.reserveren(text, uuid, boolean);
 
--- Alle lijstjes (bekijken mag iedereen).
+-- Alle lijstjes (bekijken mag iedereen). Wie ingelogd is (naam + juiste code) ziet bij ANDERMANS
+-- cadeaus of het al geregeld is (gereserveerd) en of hij/zij dat zelf is (door_mij). Nooit wie het is,
+-- en op je eigen lijstje zie je niets.
 drop function if exists public.lijsten(text);
-create or replace function public.lijsten(p_kijker text default null)
+drop function if exists public.lijsten(text, text);
+create or replace function public.lijsten(p_kijker text default null, p_code text default null)
 returns table (id uuid, eigenaar text, titel text, prijs text, link text, notitie text,
-               fav boolean, door_mij boolean)
-language sql stable security definer set search_path = public as $$
-  select c.id, c.eigenaar, c.titel, c.prijs, c.link, c.notitie, c.fav,
-         exists (select 1 from afgevinkt a where a.cadeau = c.id and a.lid = p_kijker and p_kijker <> c.eigenaar)
-  from cadeaus c
-  order by c.fav desc, c.gemaakt_op;
-$$;
+               fav boolean, gereserveerd boolean, door_mij boolean)
+language plpgsql stable security definer set search_path = public, extensions as $$
+declare v text := null;
+begin
+  if p_kijker is not null and check_code(p_kijker, p_code) then v := p_kijker; end if;
+  return query
+    select c.id, c.eigenaar, c.titel, c.prijs, c.link, c.notitie, c.fav,
+           (v is not null and v <> c.eigenaar and exists (select 1 from afgevinkt a where a.cadeau = c.id)),
+           (v is not null and v <> c.eigenaar and exists (select 1 from afgevinkt a where a.cadeau = c.id and a.lid = v))
+    from cadeaus c
+    order by c.fav desc, c.gemaakt_op;
+end $$;
 
 -- 'nieuw' = heeft nog geen code, 'code' = heeft al een code.
 create or replace function public.lid_status(p_lid text)
@@ -112,6 +120,9 @@ returns void language plpgsql security definer set search_path = public, extensi
 begin
   if not check_code(p_lid, p_code) then raise exception 'Code klopt niet'; end if;
   if p_aan then
+    if exists (select 1 from afgevinkt where cadeau = p_id and lid <> p_lid) then
+      raise exception 'Iemand anders regelt dit al';
+    end if;
     insert into afgevinkt (cadeau, lid)
     select c.id, p_lid from cadeaus c where c.id = p_id and c.eigenaar <> p_lid
     on conflict do nothing;
@@ -120,11 +131,11 @@ begin
   end if;
 end $$;
 
-revoke all on function public.lijsten(text), public.lid_status(text), public.check_code(text, text),
+revoke all on function public.lijsten(text, text), public.lid_status(text), public.check_code(text, text),
   public.code_instellen(text, text), public.cadeau_toevoegen(text, text, text, text, text, text, boolean),
   public.cadeau_bijwerken(text, text, uuid, text, text, text, text, boolean),
   public.cadeau_verwijderen(text, text, uuid), public.reserveren(text, text, uuid, boolean) from public;
-grant execute on function public.lijsten(text), public.lid_status(text), public.check_code(text, text),
+grant execute on function public.lijsten(text, text), public.lid_status(text), public.check_code(text, text),
   public.code_instellen(text, text), public.cadeau_toevoegen(text, text, text, text, text, text, boolean),
   public.cadeau_bijwerken(text, text, uuid, text, text, text, text, boolean),
   public.cadeau_verwijderen(text, text, uuid), public.reserveren(text, text, uuid, boolean) to anon, authenticated;
