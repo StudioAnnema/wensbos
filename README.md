@@ -38,4 +38,4 @@ De publishable/anon key mag openbaar staan. De tabellen zelf zijn dicht: alles l
 ## Delen
 
 Directe link naar iemands lijstje: `https://studioannema.github.io/wensbos/#/tijme`
-(of `#/benno`, `#/aletha`, `#/sieb`). Een vaste wereld: `?wereld=bos`, `?wereld=fuji` of `?wereld=strand`.
+(of `#/benno`, `#/aletha`, `#/sieb`). Een vaste wereld: `?wereld=bos`, `?wereld=fuji`, `?wereld=strand` of `?wereld=winter`.
