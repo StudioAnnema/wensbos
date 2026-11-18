@@ -584,14 +584,15 @@
     winter: { nr: 4, naam: 'WINTER', sky: ['#0b1530','#101d3d','#16274d','#1d3360','#264173','#335386','#466a9c','#6185b3'],
               bits: ['#ffffff', '#eef4ff', '#dfe9f7'] },
   };
-  // Update-melding: wie hem nog niet zag, krijgt hem één keer en start dan in de nieuwe wereld.
-  const PATCH = '1.1';
-  let patchSeen = true;
-  try { patchSeen = localStorage.getItem('wensbos-patch') === PATCH; } catch {}
+  // Update-melding: wie hem nog niet zag, krijgt hem één keer. Wie 1.1 ook nog niet zag, krijgt die erbij
+  // en start in de winterwereld.
+  const PATCH = '1.2';
+  let patchSeen = true, mist11 = false;
+  try { const p = localStorage.getItem('wensbos-patch'); patchSeen = p === PATCH; mist11 = !p; } catch {}
   const THEME = (() => {
     const keys = Object.keys(THEMES), q = new URLSearchParams(location.search).get('wereld');
     if (keys.includes(q)) return q;
-    if (!patchSeen) { try { localStorage.setItem('wensbos-wereld', 'winter'); } catch {} return 'winter'; }
+    if (mist11) { try { localStorage.setItem('wensbos-wereld', 'winter'); } catch {} return 'winter'; }
     let last = null; try { last = localStorage.getItem('wensbos-wereld'); } catch {}
     const pool = keys.filter(k => k !== last), pick = pool[Math.floor(Math.random() * pool.length)];
     try { localStorage.setItem('wensbos-wereld', pick); } catch {}
@@ -1484,12 +1485,18 @@
     m.className = 'modal'; m.id = 'patch';
     m.innerHTML = `<div class="panel">
         <h2>★ UPDATE ${PATCH} ★</h2>
-        <p class="intro"><b class="gold">NIEUW: IK KOOP DIT</b><br>
+        <p class="intro"><b class="gold">GROTER NOTITIEBLOK</b><br>
+        Bij een cadeau kun je nu veel meer kwijt: maat, kleur, waarom je het wilt...
+        Met ENTER begin je gewoon een nieuwe regel.</p>
+        <p class="intro"><b class="gold">TOT 3 LINKS PER CADEAU</b><br>
+        Geef elke link een eigen naam, zoals VIA BOL, VIA AMAZON of ERGENS ANDERS.
+        Zo zie je meteen waar je het kunt kopen.</p>
+        ${mist11 ? `<p class="intro"><b class="gold">OOK NIEUW: IK KOOP DIT</b><br>
         Ga je iets kopen van iemands verlanglijstje? Tik op IK KOOP DIT.
         De rest ziet dan AL GEREGELD, maar niemand ziet wie het koopt.
         De jarige zelf ziet helemaal niks.</p>
         <p class="intro"><b class="gold">NIEUWE WERELD: 1-4 WINTER</b><br>
-        Met noorderlicht, sneeuw en een sneeuwpop. Je staat er nu middenin!</p>
+        Met noorderlicht, sneeuw en een sneeuwpop. Je staat er nu middenin!</p>` : ''}
         <div class="row"><button class="btn" type="button">▶ TOP!</button></div>
       </div>`;
     document.body.appendChild(m);
