@@ -24,6 +24,8 @@ Code vergeten? In Supabase → SQL Editor: `update public.leden set code_hash = 
    ```
 
    Alleen de titel is verplicht. Begin met `★` als je iets héél graag wilt.
+   Meer links (max 3)? Zet ze achter elkaar met een `;` en een naam ervoor:
+   `- Koptelefoon | €80 | via Bol https://… ; via Amazon https://… | in het zwart`
 3. Klik op **Commit changes**. Binnen een minuutje staat het online.
 
 ## De database aanzetten (eenmalig)
@@ -34,6 +36,13 @@ Code vergeten? In Supabase → SQL Editor: `update public.leden set code_hash = 
 4. Zet die twee in [`config.js`](config.js) en sla op. Klaar: de site gebruikt vanaf nu de database.
 
 De publishable/anon key mag openbaar staan. De tabellen zelf zijn dicht: alles loopt via de functies uit `supabase.sql`.
+
+## Update 1.2: langere notitie en meer links
+
+Een cadeau heeft nu een groot notitieveld (Enter = nieuwe regel, max 1000 tekens) en tot 3 links met een
+eigen naam, bijv. "via Bol", "via Amazon", "ergens anders". Daarvoor moet de database één keer bijgewerkt:
+plak [`supabase.sql`](supabase.sql) opnieuw in **Supabase → SQL Editor** en klik **Run**. Bestaande cadeaus en
+links blijven gewoon staan.
 
 ## Delen
 

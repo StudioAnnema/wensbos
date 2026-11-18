@@ -20,10 +20,18 @@ create table if not exists public.cadeaus (
   titel             text not null check (char_length(titel) between 1 and 120),
   prijs             text not null default '' check (char_length(prijs) <= 30),
   link              text not null default '' check (link = '' or link ~* '^https?://'),
-  notitie           text not null default '' check (char_length(notitie) <= 200),
+  notitie           text not null default '' check (char_length(notitie) <= 1000),
   fav               boolean not null default false,
   gemaakt_op        timestamptz not null default now()
 );
+
+-- Update 1.2: langere notitie (met enters) en tot 3 links met een eigen naam ("via Bol", "via Amazon"…).
+-- links = [{"url": "https://…", "label": "via Bol"}, …]. De oude kolom link houdt de eerste link.
+alter table public.cadeaus add column if not exists links jsonb not null default '[]'::jsonb;
+alter table public.cadeaus drop constraint if exists cadeaus_notitie_check;
+alter table public.cadeaus add constraint cadeaus_notitie_check check (char_length(notitie) <= 1000);
+update public.cadeaus set links = jsonb_build_array(jsonb_build_object('url', link, 'label', ''))
+ where link <> '' and links = '[]'::jsonb;
 
 -- Wie wat koopt. Anderen zien alleen DAT het geregeld is, nooit door wie; de eigenaar ziet niets.
 create table if not exists public.afgevinkt (
@@ -43,6 +51,32 @@ revoke all on public.leden, public.cadeaus, public.afgevinkt from anon, authenti
 drop function if exists public.cadeau_toevoegen(text, text, text, text, text, boolean);
 drop function if exists public.cadeau_verwijderen(text, uuid);
 drop function if exists public.reserveren(text, uuid, boolean);
+-- Versies zonder p_links (vóór update 1.2) opruimen; de nieuwe hieronder snappen oude aanroepen ook nog.
+drop function if exists public.cadeau_toevoegen(text, text, text, text, text, text, boolean);
+drop function if exists public.cadeau_bijwerken(text, text, uuid, text, text, text, text, boolean);
+
+-- Links controleren en opschonen: max 3, alleen http(s), naam max 40 tekens, lege regels weg.
+-- Geen p_links meegegeven (oude versie van de site)? Dan wordt p_link de enige link.
+create or replace function public.schone_links(p_links jsonb, p_link text)
+returns jsonb language plpgsql immutable set search_path = public as $$
+declare uit jsonb := '[]'::jsonb; x jsonb; u text; l text;
+begin
+  if p_links is null or jsonb_typeof(p_links) <> 'array' then
+    p_links := case when coalesce(trim(p_link), '') = '' then '[]'::jsonb
+                    else jsonb_build_array(jsonb_build_object('url', trim(p_link), 'label', '')) end;
+  end if;
+  for x in select * from jsonb_array_elements(p_links) loop
+    u := trim(coalesce(x->>'url', ''));
+    l := trim(coalesce(x->>'label', ''));
+    continue when u = '';
+    if u !~* '^https?://' then raise exception 'Een link moet met https:// beginnen'; end if;
+    if char_length(u) > 500 then raise exception 'Een link is te lang'; end if;
+    if char_length(l) > 40 then raise exception 'De naam van een link mag maximaal 40 tekens zijn'; end if;
+    uit := uit || jsonb_build_array(jsonb_build_object('url', u, 'label', l));
+  end loop;
+  if jsonb_array_length(uit) > 3 then raise exception 'Maximaal 3 links per cadeau'; end if;
+  return uit;
+end $$;
 
 -- Alle lijstjes (bekijken mag iedereen). Wie ingelogd is (naam + juiste code) ziet bij ANDERMANS
 -- cadeaus of het al geregeld is (gereserveerd) en of hij/zij dat zelf is (door_mij). Nooit wie het is,
@@ -50,14 +84,14 @@ drop function if exists public.reserveren(text, uuid, boolean);
 drop function if exists public.lijsten(text);
 drop function if exists public.lijsten(text, text);
 create or replace function public.lijsten(p_kijker text default null, p_code text default null)
-returns table (id uuid, eigenaar text, titel text, prijs text, link text, notitie text,
+returns table (id uuid, eigenaar text, titel text, prijs text, link text, links jsonb, notitie text,
                fav boolean, gereserveerd boolean, door_mij boolean)
 language plpgsql stable security definer set search_path = public, extensions as $$
 declare v text := null;
 begin
   if p_kijker is not null and check_code(p_kijker, p_code) then v := p_kijker; end if;
   return query
-    select c.id, c.eigenaar, c.titel, c.prijs, c.link, c.notitie, c.fav,
+    select c.id, c.eigenaar, c.titel, c.prijs, c.link, c.links, c.notitie, c.fav,
            (v is not null and v <> c.eigenaar and exists (select 1 from afgevinkt a where a.cadeau = c.id)),
            (v is not null and v <> c.eigenaar and exists (select 1 from afgevinkt a where a.cadeau = c.id and a.lid = v))
     from cadeaus c
@@ -86,23 +120,29 @@ begin
 end $$;
 
 create or replace function public.cadeau_toevoegen(p_lid text, p_code text, p_titel text, p_prijs text,
-                                                   p_link text, p_notitie text, p_fav boolean)
+                                                   p_link text, p_notitie text, p_fav boolean,
+                                                   p_links jsonb default null)
 returns uuid language plpgsql security definer set search_path = public, extensions as $$
-declare nieuw uuid;
+declare nieuw uuid; ls jsonb;
 begin
   if not check_code(p_lid, p_code) then raise exception 'Code klopt niet'; end if;
-  insert into cadeaus (eigenaar, titel, prijs, link, notitie, fav)
-  values (p_lid, trim(p_titel), coalesce(trim(p_prijs), ''), coalesce(trim(p_link), ''), coalesce(trim(p_notitie), ''), coalesce(p_fav, false))
+  ls := schone_links(p_links, p_link);
+  insert into cadeaus (eigenaar, titel, prijs, link, links, notitie, fav)
+  values (p_lid, trim(p_titel), coalesce(trim(p_prijs), ''), coalesce(ls->0->>'url', ''), ls,
+          coalesce(trim(p_notitie), ''), coalesce(p_fav, false))
   returning cadeaus.id into nieuw;
   return nieuw;
 end $$;
 
 create or replace function public.cadeau_bijwerken(p_lid text, p_code text, p_id uuid, p_titel text, p_prijs text,
-                                                   p_link text, p_notitie text, p_fav boolean)
+                                                   p_link text, p_notitie text, p_fav boolean,
+                                                   p_links jsonb default null)
 returns void language plpgsql security definer set search_path = public, extensions as $$
+declare ls jsonb;
 begin
   if not check_code(p_lid, p_code) then raise exception 'Code klopt niet'; end if;
-  update cadeaus set titel = trim(p_titel), prijs = coalesce(trim(p_prijs), ''), link = coalesce(trim(p_link), ''),
+  ls := schone_links(p_links, p_link);
+  update cadeaus set titel = trim(p_titel), prijs = coalesce(trim(p_prijs), ''), link = coalesce(ls->0->>'url', ''), links = ls,
                      notitie = coalesce(trim(p_notitie), ''), fav = coalesce(p_fav, false)
    where id = p_id and eigenaar = p_lid;
   if not found then raise exception 'Cadeau niet gevonden'; end if;
@@ -132,12 +172,13 @@ begin
 end $$;
 
 revoke all on function public.lijsten(text, text), public.lid_status(text), public.check_code(text, text),
-  public.code_instellen(text, text), public.cadeau_toevoegen(text, text, text, text, text, text, boolean),
-  public.cadeau_bijwerken(text, text, uuid, text, text, text, text, boolean),
-  public.cadeau_verwijderen(text, text, uuid), public.reserveren(text, text, uuid, boolean) from public;
+  public.code_instellen(text, text), public.cadeau_toevoegen(text, text, text, text, text, text, boolean, jsonb),
+  public.cadeau_bijwerken(text, text, uuid, text, text, text, text, boolean, jsonb),
+  public.cadeau_verwijderen(text, text, uuid), public.reserveren(text, text, uuid, boolean),
+  public.schone_links(jsonb, text) from public;
 grant execute on function public.lijsten(text, text), public.lid_status(text), public.check_code(text, text),
-  public.code_instellen(text, text), public.cadeau_toevoegen(text, text, text, text, text, text, boolean),
-  public.cadeau_bijwerken(text, text, uuid, text, text, text, text, boolean),
+  public.code_instellen(text, text), public.cadeau_toevoegen(text, text, text, text, text, text, boolean, jsonb),
+  public.cadeau_bijwerken(text, text, uuid, text, text, text, text, boolean, jsonb),
   public.cadeau_verwijderen(text, text, uuid), public.reserveren(text, text, uuid, boolean) to anon, authenticated;
 
 -- 3. Familieleden ---------------------------------------------------------

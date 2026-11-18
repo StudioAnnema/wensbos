@@ -95,7 +95,7 @@
     display:grid;place-items:center;font-size:12px;grid-row:span 2}
   .wish h3{font-size:12px;line-height:1.6;font-weight:normal;word-break:break-word}
   .wish .price{font-size:11px;color:#9a6a00;white-space:nowrap;padding-top:2px}
-  .wish .note{grid-column:2/4;font-size:9px;line-height:1.8;color:#5b5470;word-break:break-word}
+  .wish .note{grid-column:2/4;font-size:9px;line-height:1.8;color:#5b5470;word-break:break-word;white-space:pre-wrap}
   .wish .go{grid-column:2/4;justify-self:start;margin-top:6px}
   .wish.fav .ico{background:var(--red);color:#fff;box-shadow:0 0 0 3px var(--ink),inset -3px -3px 0 #9c2c20}
   @keyframes pop{from{transform:scale(.6);opacity:0}}
@@ -146,11 +146,18 @@
   .editform label:first-child{margin-top:0}
   .editform input{display:block;width:100%;margin-top:4px;font-family:inherit;font-size:11px;padding:9px;border:0;
     background:#fff;color:var(--ink);box-shadow:inset 0 0 0 2px var(--ink)}
+  .editform textarea{display:block;width:100%;margin-top:4px;font-family:inherit;font-size:11px;line-height:1.7;padding:9px;border:0;
+    background:#fff;color:var(--ink);box-shadow:inset 0 0 0 2px var(--ink);resize:vertical}
+  .panel textarea{line-height:1.7;resize:vertical}
+  .linkrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:8px}
+  .linkrow input{margin-top:6px}
   .editform .check{display:flex;gap:8px;align-items:center}
   .editform .check input{width:auto;margin:0;box-shadow:none}
   .editform .row{display:flex;gap:12px;flex-wrap:wrap;margin-top:14px}
   @media (max-width:560px){
-    .panel input,.panel textarea,.editform input{font-size:16px} /* voorkomt automatisch inzoomen op iPhone */
+    .panel input,.panel textarea,.editform input,.editform textarea{font-size:16px} /* voorkomt automatisch inzoomen op iPhone */
+    .linkrow{grid-template-columns:1fr}
+    .linkrow input+input{margin-top:0}
     .head{flex-direction:column;text-align:center;gap:14px}
     .wish{grid-template-columns:auto 1fr}
     .wish .price{grid-column:2}
@@ -1021,13 +1028,24 @@
     return text ? JSON.parse(text) : null;
   }
   const safeLink = l => /^https?:\/\//i.test(l || '') ? l : '';
+  const MAX_LINKS = 3, MAX_NOTITIE = 1000;
+  // Links: [{ url, label }], max 3, alleen http(s). Label is bijv. "via Bol".
+  const cleanLinks = arr => (Array.isArray(arr) ? arr : [])
+    .map(x => ({ url: safeLink(String(x?.url || '').trim()), label: String(x?.label || '').trim() }))
+    .filter(x => x.url).slice(0, MAX_LINKS);
+  // In een .md-bestand: "via Bol https://… ; via Amazon https://…" (gescheiden door ;)
+  const parseLinks = s => cleanLinks(String(s || '').split(';').map(part => {
+    const m = part.match(/https?:\/\/\S+/i);
+    return m ? { url: m[0], label: part.replace(m[0], '').replace(/[\s:=]+$/, '').trim() } : null;
+  }));
   function parseWensen(md) {
     return md.replace(/<!--[\s\S]*?-->/g, '').split(/\r?\n/)
       .filter(l => /^\s*[-*]\s+\S/.test(l))
       .map(l => {
         const [titel = '', prijs = '', link = '', notitie = ''] = l.replace(/^\s*[-*]\s+/, '').split('|').map(s => s.trim());
         const fav = /^(★|\*)/.test(titel);
-        return { titel: titel.replace(/^(★|\*)\s*/, ''), prijs, link: safeLink(link), notitie, fav };
+        const links = parseLinks(link);
+        return { titel: titel.replace(/^(★|\*)\s*/, ''), prijs, links, link: links[0]?.url || '', notitie, fav };
       })
       .filter(w => w.titel);
   }
@@ -1037,7 +1055,8 @@
       try {
         const rows = await rpc('lijsten', { p_kijker: me?.id || null, p_code: me?.code || null });
         rows.forEach(r => (wishes[r.eigenaar] ||= []).push({
-          id: r.id, titel: r.titel, prijs: r.prijs || '', link: safeLink(r.link), notitie: r.notitie || '',
+          id: r.id, titel: r.titel, prijs: r.prijs || '', notitie: r.notitie || '',
+          ...(() => { const links = cleanLinks(r.links?.length ? r.links : [{ url: r.link }]); return { links, link: links[0]?.url || '' }; })(),
           fav: r.fav, geregeld: r.gereserveerd, doorMij: r.door_mij,
         }));
       } catch (e) { console.warn('Database niet bereikbaar:', e.message); }
@@ -1116,7 +1135,10 @@
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
   function itemActions(w, own, canBuy) {
     const parts = [];
-    if (w.link) parts.push(`<a class="btn go" href="${esc(w.link)}" target="_blank" rel="noopener noreferrer">BEKIJK ▶</a>`);
+    (w.links || []).forEach((l, k, all) => {
+      const txt = l.label ? l.label.toUpperCase() : all.length > 1 ? `LINK ${k + 1}` : 'BEKIJK';
+      parts.push(`<a class="btn go" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(txt)} ▶</a>`);
+    });
     if (own) parts.push(`<button class="btn ghost del" data-edit="${esc(w.id)}">BEWERKEN</button>`,
                         `<button class="btn ghost del" data-del="${esc(w.id)}">✕ WEGHALEN</button>`);
     // Anoniem afvinken: anderen zien alleen AL GEREGELD, nooit door wie. De eigenaar ziet niets.
@@ -1127,6 +1149,17 @@
     }
     return parts.length ? `<div class="acts">${parts.join('')}</div>` : '';
   }
+  // Notitie (met Enter = nieuwe regel) en tot 3 links met een eigen naam; voor toevoegen én bewerken.
+  function noteAndLinkFields(w = {}) {
+    const links = w.links || [];
+    return `<label>NOTITIE (MAG LEEG, ENTER = NIEUWE REGEL)
+            <textarea name="notitie" rows="5" maxlength="${MAX_NOTITIE}" placeholder="maat, kleur, waarom je het wilt…">${esc(w.notitie || '')}</textarea></label>
+          ${[0, 1, 2].map(k => `<label>LINK ${k + 1} (MAG LEEG)
+            <span class="linkrow">
+              <input name="linklabel${k}" maxlength="40" placeholder="${['via Bol', 'via Amazon', 'ergens anders'][k]}" value="${esc(links[k]?.label || '')}" aria-label="Naam van link ${k + 1}">
+              <input name="linkurl${k}" type="url" maxlength="500" placeholder="https://…" value="${esc(links[k]?.url || '')}" aria-label="Adres van link ${k + 1}">
+            </span></label>`).join('')}`;
+  }
   function footer(p, own) {
     if (!DB) {
       const editUrl = `${REPO}/edit/main/wensen/${p.id}.md`;
@@ -1134,6 +1167,7 @@
           <strong>CADEAU TOEVOEGEN?</strong>
           Open je eigen bestand op GitHub en zet er per cadeau een regel bij:<br>
           <code>- Titel | prijs | link | notitie</code><br>
+          Meer links? Zet ze achter elkaar met een <code>;</code> en een naam ervoor: <code>via Bol https://… ; via Amazon https://…</code><br>
           Begin met <code>★</code> als je iets heel graag wilt. Opslaan = binnen een minuutje online.
           <br><a class="btn" href="${editUrl}" target="_blank" rel="noopener noreferrer">✎ BEWERK ${p.naam}.MD</a>
         </div>`;
@@ -1142,8 +1176,7 @@
           <h2>CADEAU TOEVOEGEN</h2>
           <label>WAT WIL JE? <input name="titel" required maxlength="120"></label>
           <label>PRIJS (MAG LEEG) <input name="prijs" maxlength="30" placeholder="€25"></label>
-          <label>LINK (MAG LEEG) <input name="link" type="url" maxlength="500" placeholder="https://…"></label>
-          <label>NOTITIE (MAG LEEG) <input name="notitie" maxlength="200" placeholder="maat, kleur…"></label>
+          ${noteAndLinkFields()}
           <label class="check"><input type="checkbox" name="fav"> ♥ HEEL GRAAG</label>
           <p class="err" id="addErr"></p>
           <div class="row"><button class="btn" type="submit">+ OP M'N LIJSTJE</button></div>
@@ -1153,10 +1186,16 @@
   }
   // Velden uit het toevoeg- of bewerkformulier halen en controleren.
   function readGift(form) {
-    const f = new FormData(form), link = String(f.get('link') || '').trim();
-    if (link && !safeLink(link)) throw new Error('DE LINK MOET MET https:// BEGINNEN.');
-    return { p_titel: String(f.get('titel')).trim(), p_prijs: String(f.get('prijs') || '').trim(), p_link: link,
-             p_notitie: String(f.get('notitie') || '').trim(), p_fav: f.get('fav') === 'on' };
+    const f = new FormData(form), links = [];
+    for (let k = 0; k < MAX_LINKS; k++) {
+      const url = String(f.get('linkurl' + k) || '').trim(), label = String(f.get('linklabel' + k) || '').trim();
+      if (!url && !label) continue;
+      if (!url) throw new Error(`BIJ LINK ${k + 1} ("${label}") MIST HET ADRES.`);
+      if (!safeLink(url)) throw new Error(`LINK ${k + 1} MOET MET https:// BEGINNEN.`);
+      links.push({ url, label });
+    }
+    return { p_titel: String(f.get('titel')).trim(), p_prijs: String(f.get('prijs') || '').trim(), p_link: links[0]?.url || '',
+             p_links: links, p_notitie: String(f.get('notitie') || '').trim().slice(0, MAX_NOTITIE), p_fav: f.get('fav') === 'on' };
   }
   /* ================= GRAP: Benno's auto wil niet van zijn lijstje =================
      Uitzetten: zet AUTO_GRAP hieronder op false. Helemaal weghalen: dit blok, de CSS met "GRAP auto"
@@ -1224,10 +1263,10 @@
       e.preventDefault();
       const ans = inp.value.trim();
       if (!ans) { m.querySelector('.err').textContent = 'JE MOET WEL IETS INVULLEN.'; return; }
-      const notitie = [w.notitie, `${label}: ${ans}`].filter(Boolean).join(' · ').slice(0, 200);
+      const notitie = [w.notitie, `${label}: ${ans}`].filter(Boolean).join('\n').slice(0, MAX_NOTITIE);
       try {
         await rpc('cadeau_bijwerken', { p_lid: me.id, p_code: me.code, p_id: w.id, p_titel: w.titel, p_prijs: w.prijs,
-          p_link: w.link, p_notitie: notitie, p_fav: w.fav });
+          p_link: w.link, p_links: w.links, p_notitie: notitie, p_fav: w.fav });
       } catch {}
       m.remove(); sfx.coin(); grapToast('GENOTEERD! NU WETEN WE HET ZEKER.');
       await loadAll(); renderLevel(i, true);
@@ -1306,8 +1345,7 @@
       art.innerHTML = `<form class="editform">
           <label>TITEL <input name="titel" required maxlength="120" value="${esc(w.titel)}"></label>
           <label>PRIJS <input name="prijs" maxlength="30" value="${esc(w.prijs)}"></label>
-          <label>LINK <input name="link" type="url" maxlength="500" value="${esc(w.link)}"></label>
-          <label>NOTITIE <input name="notitie" maxlength="200" value="${esc(w.notitie)}"></label>
+          ${noteAndLinkFields(w)}
           <label class="check"><input type="checkbox" name="fav"${w.fav ? ' checked' : ''}> ♥ HEEL GRAAG</label>
           <p class="err"></p>
           <div class="row"><button class="btn" type="submit">✓ OPSLAAN</button><button class="btn ghost" type="button" data-cancel>ANNULEER</button></div>
