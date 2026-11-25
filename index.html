@@ -90,7 +90,7 @@
   .head p b{color:var(--gold);font-weight:normal}
   .list{display:grid;gap:18px;margin-bottom:34px}
   .wish{background:var(--paper);color:var(--ink);padding:16px 16px 14px;display:grid;grid-template-columns:auto 1fr auto;gap:6px 14px;
-    align-items:start;box-shadow:0 0 0 4px var(--ink),inset -4px -4px 0 #d8ccb0;animation:pop .35s steps(4) both}
+    align-items:start;box-shadow:0 0 0 4px var(--ink),inset -4px -4px 0 #d8ccb0}
   .wish .ico{width:28px;height:28px;background:var(--gold);box-shadow:0 0 0 3px var(--ink),inset -3px -3px 0 var(--gold-d);
     display:grid;place-items:center;font-size:12px;grid-row:span 2}
   .wish h3{font-size:12px;line-height:1.6;font-weight:normal;word-break:break-word}
@@ -98,7 +98,6 @@
   .wish .note{grid-column:2/4;font-size:9px;line-height:1.8;color:#5b5470;word-break:break-word;white-space:pre-wrap}
   .wish .go{grid-column:2/4;justify-self:start;margin-top:6px}
   .wish.fav .ico{background:var(--red);color:#fff;box-shadow:0 0 0 3px var(--ink),inset -3px -3px 0 #9c2c20}
-  @keyframes pop{from{transform:scale(.6);opacity:0}}
   .empty{background:var(--panel);padding:26px 18px;text-align:center;font-size:10px;line-height:2;color:var(--muted);
     box-shadow:0 0 0 4px var(--ink)}
   .howto{border:3px dashed var(--muted);padding:18px;font-size:9px;line-height:2;color:var(--muted)}
@@ -1309,7 +1308,7 @@
         </div>
         <div class="list">
           ${list.length ? list.map((w0, k) => { const w = isGrapAuto(p, w0) ? grapView(w0) : w0; return `
-            <article class="wish${w.fav ? ' fav' : ''}${canBuy && w.geregeld && !w.doorMij ? ' taken' : ''}" style="animation-delay:${k * 70}ms">
+            <article class="wish${w.fav ? ' fav' : ''}${canBuy && w.geregeld && !w.doorMij ? ' taken' : ''}">
               <span class="ico" aria-hidden="true">${w.fav ? '♥' : '★'}</span>
               <h3>${esc(w.titel)}</h3>
               <span class="price">${esc(w.prijs)}</span>
