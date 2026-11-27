@@ -118,7 +118,7 @@
   .panel .check{display:flex;gap:10px;align-items:center}
   .panel .check input{width:auto;margin:0}
   .who-pick{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .who-pick button:nth-child(n+5){background:#3a2f52}
+  .who-pick button:nth-child(n+5){background:#3a2f52;grid-column:1 / -1}
   .who-pick button{font-family:inherit;font-size:10px;padding:10px;border:0;cursor:pointer;background:var(--panel-2);color:var(--paper);box-shadow:0 0 0 3px var(--ink)}
   .who-pick button[aria-pressed="true"]{background:var(--gold);color:var(--ink)}
   .panel .intro{font-size:10px;line-height:1.9;color:var(--paper);margin-top:18px}
@@ -227,7 +227,8 @@
   ];
   // Gasten: kunnen inloggen en cadeaus claimen, maar hebben zelf geen lijstje en lopen niet rond.
   // Ze zweven als wolkje door de lucht (zie opaOmaWolk).
-  const GASTEN = [ { id:'opa', naam:'JOOP', link:'joop' }, { id:'oma', naam:'TJISKE', link:'tjiske' } ];
+  // Tjiske en Joop delen één inlog (id 'opa' in de database)
+  const GASTEN = [ { id:'opa', naam:'TJISKE & JOOP', links:['tjiskeenjoop','tjiske','joop','oma'] } ];
   // Hoe ze in de lucht verschijnen: 'ballon' of 'wolk' (?gast=wolk om te vergelijken)
   const GAST_STIJL = new URLSearchParams(location.search).get('gast') === 'wolk' ? 'wolk' : 'ballon';
   const LEDEN = [...PEOPLE, ...GASTEN];
@@ -1573,7 +1574,7 @@
   const deep = PEOPLE.findIndex(p => `#/${p.id}` === location.hash);
   // persoonlijke link #/ik/naam: eerste keer code kiezen, daarna meteen naar je eigen lijstje
   const ikRaw = (location.hash.match(/^#\/ik\/(\w+)/) || [])[1];
-  const ik = GASTEN.find(x => x.link === ikRaw)?.id || ikRaw; // #/ik/joop en #/ik/tjiske
+  const ik = GASTEN.find(x => x.links.includes(ikRaw))?.id || ikRaw; // #/ik/tjiskeenjoop
   const ikIdx = PEOPLE.findIndex(p => p.id === ik);
   if (deep >= 0 || ikIdx >= 0 || isGast(ik)) {
     showPlayUI(); placeHeroesAtHome(); state = 'play'; hint.style.opacity = 0;

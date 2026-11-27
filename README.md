@@ -12,7 +12,7 @@ Live: https://studioannema.github.io/wensbos/
 2. Je komt meteen op je eigen verlanglijstje: vul onderaan **CADEAU TOEVOEGEN** in.
 
 Persoonlijke links: `#/ik/benno`, `#/ik/tijme`, `#/ik/aletha`, `#/ik/sieb`.
-Tjiske en Joop (`#/ik/tjiske`, `#/ik/joop`) hebben geen eigen lijstje, maar kunnen wel inloggen en cadeaus claimen met **IK KOOP DIT**. Ze varen in een luchtballon door de lucht (`?gast=wolk` toont de oude wolk).
+Tjiske en Joop delen één inlog (`#/ik/tjiskeenjoop`). Ze hebben geen eigen lijstje, maar kunnen wel inloggen en cadeaus claimen met **IK KOOP DIT**. Ze varen in een luchtballon door de lucht (`?gast=wolk` toont de oude wolk).
 Code vergeten? In Supabase → SQL Editor: `update public.leden set code_hash = null where id = 'benno';`
 
 ### Zonder database (via GitHub)
