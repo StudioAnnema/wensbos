@@ -118,6 +118,7 @@
   .panel .check{display:flex;gap:10px;align-items:center}
   .panel .check input{width:auto;margin:0}
   .who-pick{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .who-pick button:nth-child(n+5){background:#3a2f52}
   .who-pick button{font-family:inherit;font-size:10px;padding:10px;border:0;cursor:pointer;background:var(--panel-2);color:var(--paper);box-shadow:0 0 0 3px var(--ink)}
   .who-pick button[aria-pressed="true"]{background:var(--gold);color:var(--ink)}
   .panel .intro{font-size:10px;line-height:1.9;color:var(--paper);margin-top:18px}
@@ -224,6 +225,11 @@
       skin:'#f6d3bd', skinD:'#e0ab90', hair:'#d65f25', hairH:'#f08a3c', hairD:'#a8461a',
       short:true, shirt:'#5e7fa3', shirtD:'#4b6789', pants:'#2a2a33', shoes:'#f0f0f0' },
   ];
+  // Gasten: kunnen inloggen en cadeaus claimen, maar hebben zelf geen lijstje en lopen niet rond.
+  // Ze zweven als wolkje door de lucht (zie opaOmaWolk).
+  const GASTEN = [ { id:'opa', naam:'OPA' }, { id:'oma', naam:'OMA' } ];
+  const LEDEN = [...PEOPLE, ...GASTEN];
+  const isGast = id => GASTEN.some(x => x.id === id);
   const REPO = 'https://github.com/studioannema/wensbos';
   const INK = '#1a1424';
   const SW = 16, SH = 28;
@@ -817,6 +823,48 @@
     }
   }
 
+  /* ---- Opa & oma op een wolkje ---- */
+  const OPA_OMA = {
+    oma: ['.HHHHH.', 'HHHHHHH', 'HSSSSSH', 'HSESESH', 'HPSSSPH', 'HSMMMSH', '.SSSSS.'],
+    opa: ['.SSSSS.', 'hSSSSSh', 'hSSSSSh', 'hGEGEGh', 'hSSSSSh', 'SSWWWSS', '.SSMSS.'],
+  };
+  function opaOmaWolk(t, cam) {
+    const span = W + 120;
+    const cx = Math.round(((W * 0.35 + t * 3 - cam * 0.04) % span + span) % span - 60);
+    const y = Math.round(groundY * 0.24 + Math.sin(t * 0.8) * 1.5);
+    const cc = THEME === 'winter' ? ['#b9c8e2', '#eef4ff', '#d5e1f3'] : THEME === 'fuji' ? ['#f3d6dc', '#fff1f0', '#fbe6e8'] : ['#d7e1f2', '#ffffff', '#eef3fb'];
+    const pal = { H: '#e4e4e8', h: '#b8b8c0', S: '#f1c6a3', E: INK, G: '#3a3440', M: '#a8505a', P: '#f0a0a0', W: '#ececf0' };
+    const ty = y - 15;
+    // achterkant van de wolk
+    disc(cx - 10, y + 2, 7, cc[0]); disc(cx + 11, y + 2, 7, cc[0]);
+    // lijfjes: oma in een roze vest, opa in een blauwe trui
+    [[cx - 5, '#c0567a', 'oma'], [cx + 5, '#4f6f96', 'opa']].forEach(([x, trui, wie]) => {
+      g.fillStyle = trui; g.fillRect(x - 4, ty + 7, 9, 5);
+      OPA_OMA[wie].forEach((row, ry) => [...row].forEach((ch, rx) => {
+        if (pal[ch]) { g.fillStyle = pal[ch]; g.fillRect(x - 3 + rx, ty + ry, 1, 1); }
+      }));
+      if (wie === 'oma') { g.fillStyle = pal.H; g.fillRect(x - 1, ty - 2, 3, 2); g.fillStyle = pal.h; g.fillRect(x, ty - 2, 1, 1); }
+    });
+    // opa zwaait af en toe
+    if (t % 7 < 1.6) {
+      const up = Math.floor(t * 6) % 2;
+      g.fillStyle = '#4f6f96'; g.fillRect(cx + 10, ty + 5 - up, 2, 4);
+      g.fillStyle = pal.S; g.fillRect(cx + 10, ty + 3 - up, 2, 2);
+    }
+    // voorkant van de wolk
+    disc(cx, y + 3, 8, cc[1]); disc(cx - 13, y + 4, 6, cc[1]); disc(cx + 13, y + 4, 6, cc[1]);
+    g.fillStyle = cc[1]; g.fillRect(cx - 18, y + 5, 37, 5);
+    g.fillStyle = cc[2]; g.fillRect(cx - 16, y + 9, 33, 1);
+    // hartje dat opstijgt
+    const ph = (t + 3) % 7;
+    if (ph < 2.2) {
+      const hx = cx, hy = Math.round(ty - 4 - ph * 5);
+      g.fillStyle = '#e2574c';
+      g.fillRect(hx - 2, hy, 2, 1); g.fillRect(hx + 1, hy, 2, 1);
+      g.fillRect(hx - 2, hy + 1, 5, 1); g.fillRect(hx - 1, hy + 2, 3, 1); g.fillRect(hx, hy + 3, 1, 1);
+    }
+  }
+
   function drawWorld(t, cam) {
     // lucht in banden
     const band = Math.ceil(groundY / SKY.length);
@@ -833,6 +881,7 @@
       disc(x - 8 * c.s, y + 3, 6 * c.s, cw[1]); disc(x + 18 * c.s, y + 3, 6 * c.s, cw[2]);
       g.fillStyle = cw[1]; g.fillRect(x - 12 * c.s, y + 4, 34 * c.s, 4 * c.s);
     });
+    opaOmaWolk(t, cam);
 
     if (THEME === 'bos') {
       hills(cam, '#7e98c4', 30, 10);
@@ -1078,11 +1127,11 @@
   const whoPick = document.getElementById('whoPick'), codeForm = document.getElementById('codeForm');
   const codeIntro = document.getElementById('codeIntro'), codeEl = document.getElementById('code');
   const code2El = document.getElementById('code2'), code2Lbl = document.getElementById('code2Lbl'), codeErr = document.getElementById('codeErr');
-  const naamVan = id => PEOPLE.find(p => p.id === id)?.naam || '?';
+  const naamVan = id => LEDEN.find(p => p.id === id)?.naam || '?';
   let picked = null, mode = null, goOwn = false;
   function renderWho() { whoBtn.textContent = me ? `IK: ${naamVan(me.id)}` : '▶ WIE BEN JIJ?'; }
   if (DB) { whoBtn.classList.remove('hidden'); renderWho(); }
-  whoPick.innerHTML = PEOPLE.map(p => `<button type="button" data-id="${p.id}" aria-pressed="false">${p.naam}</button>`).join('');
+  whoPick.innerHTML = LEDEN.map(p => `<button type="button" data-id="${p.id}" aria-pressed="false">${p.naam}</button>`).join('');
   whoPick.addEventListener('click', e => { const b = e.target.closest('button'); if (b) pickPerson(b.dataset.id); });
   async function pickPerson(id) {
     picked = id; codeErr.textContent = ''; codeEl.value = ''; code2El.value = '';
@@ -1091,7 +1140,7 @@
     try { status = await rpc('lid_status', { p_lid: id }); } catch { codeErr.textContent = 'GEEN VERBINDING. PROBEER LATER NOG EENS.'; return; }
     mode = status === 'nieuw' ? 'nieuw' : 'code';
     codeIntro.textContent = mode === 'nieuw'
-      ? `HOI ${naamVan(id)}! VERZIN JE EIGEN CODE (MINSTENS 4 TEKENS). DIE HEB JE NODIG OM JE LIJSTJE AAN TE PASSEN.`
+      ? `HOI ${naamVan(id)}! VERZIN JE EIGEN CODE (MINSTENS 4 TEKENS). ${isGast(id) ? 'DAARMEE KUN JE CADEAUS KLAIMEN MET IK KOOP DIT.' : 'DIE HEB JE NODIG OM JE LIJSTJE AAN TE PASSEN.'}`
       : `HOI ${naamVan(id)}! VUL JE CODE IN.`;
     code2Lbl.classList.toggle('hidden', mode !== 'nieuw'); code2El.required = mode === 'nieuw';
     codeForm.classList.remove('hidden'); codeEl.focus();
@@ -1109,6 +1158,7 @@
     me = { id: picked, code: c };
     try { localStorage.setItem('wensbos-ik', JSON.stringify(me)); } catch {}
     sfx.coin(); renderWho(); closeLogin(); await afterAuthChange();
+    if (goOwn && isGast(me.id)) goOwn = false; // gasten hebben geen eigen lijstje: gewoon in de wereld blijven
     if (goOwn) { goOwn = false; const i = PEOPLE.findIndex(p => p.id === me.id); if (state === 'level') { history.replaceState(null, '', `#/${me.id}`); renderLevel(i); } else openLevel(i, true); }
   });
   function openLogin(preset) {
@@ -1296,7 +1346,7 @@
       <div class="wrap${quiet ? ' quiet' : ''}">
         <div class="topbar">
           <button class="btn ghost" id="back">◀ TERUG</button>
-          ${DB ? `<button class="btn ghost" id="lvlWho">${me ? 'IK: ' + esc(PEOPLE.find(x => x.id === me.id)?.naam || '?') : '▶ WIE BEN JIJ?'}</button>` : `<span class="lvl-world">WERELD 1-${i + 1}</span>`}
+          ${DB ? `<button class="btn ghost" id="lvlWho">${me ? 'IK: ' + esc(naamVan(me.id)) : '▶ WIE BEN JIJ?'}</button>` : `<span class="lvl-world">WERELD 1-${i + 1}</span>`}
         </div>
         <div class="head">
           <canvas width="20" height="33" id="portrait"></canvas>
@@ -1473,11 +1523,11 @@
   // persoonlijke link #/ik/naam: eerste keer code kiezen, daarna meteen naar je eigen lijstje
   const ik = (location.hash.match(/^#\/ik\/(\w+)/) || [])[1];
   const ikIdx = PEOPLE.findIndex(p => p.id === ik);
-  if (deep >= 0 || ikIdx >= 0) {
+  if (deep >= 0 || ikIdx >= 0 || isGast(ik)) {
     showPlayUI(); placeHeroesAtHome(); state = 'play'; hint.style.opacity = 0;
     if (deep >= 0) loaded.then(() => openLevel(deep, true));
     else if (DB && me?.id !== ik) { goOwn = true; openLogin(ik); }
-    else loaded.then(() => openLevel(ikIdx, true));
+    else if (ikIdx >= 0) loaded.then(() => openLevel(ikIdx, true));
   }
   if (!patchSeen) {
     const m = document.createElement('div');

@@ -183,7 +183,9 @@ grant execute on function public.lijsten(text, text), public.lid_status(text), p
 
 -- 3. Familieleden ---------------------------------------------------------
 insert into public.leden (id, naam) values
-  ('benno', 'Benno'), ('tijme', 'Tijme'), ('aletha', 'Aletha'), ('sieb', 'Sieb')
+  ('benno', 'Benno'), ('tijme', 'Tijme'), ('aletha', 'Aletha'), ('sieb', 'Sieb'),
+  -- gasten: geen eigen lijstje, wel inloggen en cadeaus claimen
+  ('opa', 'Opa'), ('oma', 'Oma')
 on conflict (id) do nothing;
 
 -- 4. Startcadeaus (alleen als de lijst nog helemaal leeg is) ---------------
