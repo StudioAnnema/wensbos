@@ -227,7 +227,9 @@
   ];
   // Gasten: kunnen inloggen en cadeaus claimen, maar hebben zelf geen lijstje en lopen niet rond.
   // Ze zweven als wolkje door de lucht (zie opaOmaWolk).
-  const GASTEN = [ { id:'opa', naam:'OPA' }, { id:'oma', naam:'OMA' } ];
+  const GASTEN = [ { id:'opa', naam:'JOOP', link:'joop' }, { id:'oma', naam:'TJISKE', link:'tjiske' } ];
+  // Hoe ze in de lucht verschijnen: 'ballon' of 'wolk' (?gast=wolk om te vergelijken)
+  const GAST_STIJL = new URLSearchParams(location.search).get('gast') === 'wolk' ? 'wolk' : 'ballon';
   const LEDEN = [...PEOPLE, ...GASTEN];
   const isGast = id => GASTEN.some(x => x.id === id);
   const REPO = 'https://github.com/studioannema/wensbos';
@@ -865,6 +867,55 @@
     }
   }
 
+  function opaOmaBallon(t, cam) {
+    const span = W + 120;
+    const cx = Math.round(((W * 0.3 + t * 2.5 - cam * 0.03) % span + span) % span - 60);
+    const top = Math.round(groundY * 0.08 + Math.sin(t * 0.7) * 2);
+    // ballon: rode en crème banen, rond bovenaan en smal naar onderen
+    const strepen = ['#e2574c', '#f6e7c1', '#f2b33d', '#f6e7c1', '#e2574c', '#f6e7c1'];
+    for (let ry = 0; ry < 22; ry++) {
+      const r = ry < 12 ? Math.round(Math.sqrt(Math.max(0, 121 - (ry - 11) * (ry - 11)))) : Math.round(11 - (ry - 11) * 0.7);
+      for (let dx = -r; dx <= r; dx++) {
+        const edge = dx === -r || dx === r || ry === 0;
+        g.fillStyle = edge ? INK : strepen[Math.min(5, Math.floor((dx + r) / (2 * r + 1) * 6))];
+        g.fillRect(cx + dx, top + ry, 1, 1);
+      }
+    }
+    g.fillStyle = 'rgba(255,255,255,.45)'; g.fillRect(cx - 7, top + 4, 2, 6); g.fillRect(cx - 6, top + 3, 1, 1);
+    const ey = top + 22;
+    // touwen
+    g.fillStyle = '#5a4030';
+    for (let k = 0; k < 6; k++) { g.fillRect(cx - 4 - Math.round(k * 0.8), ey + k, 1, 1); g.fillRect(cx + 4 + Math.round(k * 0.8), ey + k, 1, 1); }
+    // koppies boven de mand uit
+    const pal = { H: '#e4e4e8', h: '#b8b8c0', S: '#f1c6a3', E: INK, G: '#3a3440', M: '#a8505a', P: '#f0a0a0', W: '#ececf0' };
+    const hy = ey + 1;
+    [[cx - 4, 'oma'], [cx + 4, 'opa']].forEach(([x, wie]) => {
+      OPA_OMA[wie].forEach((row, ry) => [...row].forEach((ch, rx) => {
+        if (pal[ch]) { g.fillStyle = pal[ch]; g.fillRect(x - 3 + rx, hy + ry, 1, 1); }
+      }));
+      if (wie === 'oma') { g.fillStyle = pal.H; g.fillRect(x - 1, hy - 2, 3, 2); g.fillStyle = pal.h; g.fillRect(x, hy - 2, 1, 1); }
+    });
+    // opa zwaait af en toe
+    if (t % 7 < 1.6) {
+      const up = Math.floor(t * 6) % 2;
+      g.fillStyle = pal.S; g.fillRect(cx + 9, ey + 1 - up, 2, 2);
+      g.fillStyle = '#4f6f96'; g.fillRect(cx + 9, ey + 3 - up, 2, 4);
+    }
+    // mand
+    g.fillStyle = '#8a5a32'; g.fillRect(cx - 9, ey + 6, 19, 6);
+    g.fillStyle = '#6b4424'; g.fillRect(cx - 9, ey + 6, 19, 1); g.fillRect(cx - 9, ey + 9, 19, 1);
+    for (let x = cx - 7; x < cx + 10; x += 3) g.fillRect(x, ey + 7, 1, 5);
+    g.fillStyle = INK; g.fillRect(cx - 9, ey + 12, 19, 1);
+    // hartje dat opstijgt naast de ballon
+    const ph = (t + 3) % 7;
+    if (ph < 2.2) {
+      const hx = cx + 15, hyy = Math.round(ey - ph * 5);
+      g.fillStyle = '#e2574c';
+      g.fillRect(hx - 2, hyy, 2, 1); g.fillRect(hx + 1, hyy, 2, 1);
+      g.fillRect(hx - 2, hyy + 1, 5, 1); g.fillRect(hx - 1, hyy + 2, 3, 1); g.fillRect(hx, hyy + 3, 1, 1);
+    }
+  }
+
   function drawWorld(t, cam) {
     // lucht in banden
     const band = Math.ceil(groundY / SKY.length);
@@ -881,7 +932,7 @@
       disc(x - 8 * c.s, y + 3, 6 * c.s, cw[1]); disc(x + 18 * c.s, y + 3, 6 * c.s, cw[2]);
       g.fillStyle = cw[1]; g.fillRect(x - 12 * c.s, y + 4, 34 * c.s, 4 * c.s);
     });
-    opaOmaWolk(t, cam);
+    if (GAST_STIJL === 'wolk') opaOmaWolk(t, cam); else opaOmaBallon(t, cam);
 
     if (THEME === 'bos') {
       hills(cam, '#7e98c4', 30, 10);
@@ -1521,7 +1572,8 @@
   // direct naar een lijst via #/naam (deelbare link)
   const deep = PEOPLE.findIndex(p => `#/${p.id}` === location.hash);
   // persoonlijke link #/ik/naam: eerste keer code kiezen, daarna meteen naar je eigen lijstje
-  const ik = (location.hash.match(/^#\/ik\/(\w+)/) || [])[1];
+  const ikRaw = (location.hash.match(/^#\/ik\/(\w+)/) || [])[1];
+  const ik = GASTEN.find(x => x.link === ikRaw)?.id || ikRaw; // #/ik/joop en #/ik/tjiske
   const ikIdx = PEOPLE.findIndex(p => p.id === ik);
   if (deep >= 0 || ikIdx >= 0 || isGast(ik)) {
     showPlayUI(); placeHeroesAtHome(); state = 'play'; hint.style.opacity = 0;
